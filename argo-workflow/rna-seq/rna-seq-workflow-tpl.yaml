@@ -66,15 +66,30 @@ spec:
         persistentVolumeClaim:
           claimName: '{{inputs.parameters.pvc-name}}'
     container:
-      image: mgibio/rnaseq:1.0.0
-      command: ["/usr/bin/hisat2"]
-      args: ["-p", "{{inputs.parameters.threads}}", "--rg-id", "{{inputs.parameters.read_group_id}}", "{{inputs.parameters.read_group_fields}}", "-x", "{{inputs.parameters.reference_index}}", "--dta", "--rna-strandness RF", "-1", "{{inputs.parameters.trimmed_fastq1}}", "-2", "{{inputs.parameters.trimmed_fastq2}}", "|", "/usr/bin/sambamba", "view", "-S", "-f", "bam", "-l", "0", "/dev/stdin", "|", "/usr/bin/sambamba", "sort", "-t", "{{inputs.parameters.threads}}", "-m", "8G", "-o", "{{inputs.parameters.output-dir}}/aligned.bam", "/dev/stdin"]
+      image: docker.cancerdb.io/mgbio-workflow/hisat2-align:1.0.0
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
         mountPath: /data
       - name: pvc-reference
         mountPath: /ref-hg38
+      env:
+      - name: THREADS
+        value: {{inputs.parameters.threads}}
+      - name: FASTQ1
+        value: {{inputs.parameters.trimmed_fastq1}}
+      - name: FASTQ2
+        value: {{inputs.parameters.trimmed_fastq2}}
+      - name: REFINDEX
+        value: {{inputs.parameters.reference_index}}
+      - name: READGRP
+        value: {{inputs.parameters.read_group_id}}
+      - name: READGRPFIELDS
+        value: {{inputs.parameters.read_group_fields}
+      - name: OUTPUTDIR
+        value: {{inputs.parameters.output-dir}}
+      - name: STRAND
+        value: {{inputs.parameters.strand}}
     outputs:
       parameters:
       - name: aligned_bam
