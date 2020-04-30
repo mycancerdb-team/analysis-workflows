@@ -7,7 +7,9 @@ spec:
     - name: pvc-reference
       persistentVolumeClaim:
         claimName: workflow-ref-hg38-dev #### This is subject to change.
-        readOnly: true
+  imagePullSecrets:
+    - name: mgbio-cred
+    - name: mcdb-bot
   templates:
   - name: trim-fastq
     inputs:
@@ -32,7 +34,7 @@ spec:
     container:
       image: mgibio/bisulfite:v1.4
       command: ['/opt/flexbar/flexbar']
-      args: ["--adapter-min-overlap", "{{inputs.parameters.trim-adapter-min-overlap}}", "--adapter-trim-end", "{{inputs.parameters.trim-adapter-end}}", "--adapters", "{{inputs.parameters.trim-adapter-file}}", "--max-uncalled", "{{inputs.parameters.trim-max_uncalled}}", "--min-read-length", "{{inputs.parameters.trim-min-readlength}}", "--threads", "{{inputs.parameters.threads}}", "--reads", "{{inputs.parameters.rna-fastq-r1}}", "--reads2", "{{inputs.parameters.rna-fastq-r2}}", "--target", "{{inputs.parameters.output-dir}}/trimmed_read", "--stdout-log"]
+      args: ["--adapter-min-overlap", "{{inputs.parameters.trim-adapter-min-overlap}}", "--adapter-trim-end", "{{inputs.parameters.trim-adapter-end}}", "--adapters", "{{inputs.parameters.trim-adapter-file}}", "--max-uncalled", "{{inputs.parameters.trim-max_uncalled}}", "--min-read-length", "{{inputs.parameters.trim-min-readlength}}", "--threads", "{{inputs.parameters.threads}}", "--reads", "{{inputs.parameters.rna-fastq-r1}}", "--reads2", "{{inputs.parameters.rna-fastq-r2}}", "--target", "{{inputs.parameters.output-dir}}/trimmed_read/trimmed_read", "--stdout-log"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -75,21 +77,21 @@ spec:
         mountPath: /ref-hg38
       env:
       - name: THREADS
-        value: {{inputs.parameters.threads}}
+        value: "{{inputs.parameters.threads}}"
       - name: FASTQ1
-        value: {{inputs.parameters.trimmed_fastq1}}
+        value: "{{inputs.parameters.trimmed_fastq1}}"
       - name: FASTQ2
-        value: {{inputs.parameters.trimmed_fastq2}}
+        value: "{{inputs.parameters.trimmed_fastq2}}"
       - name: REFINDEX
-        value: {{inputs.parameters.reference_index}}
+        value: "{{inputs.parameters.reference_index}}"
       - name: READGRP
-        value: {{inputs.parameters.read_group_id}}
+        value: "{{inputs.parameters.read_group_id}}"
       - name: READGRPFIELDS
-        value: {{inputs.parameters.read_group_fields}
+        value: "{{inputs.parameters.read_group_fields}}"
       - name: OUTPUTDIR
-        value: {{inputs.parameters.output-dir}}
+        value: "{{inputs.parameters.output-dir}}"
       - name: STRAND
-        value: {{inputs.parameters.strand}}
+        value: "{{inputs.parameters.strand}}"
     outputs:
       parameters:
       - name: aligned_bam

@@ -7,7 +7,6 @@ spec:
     - name: pvc-reference
       persistentVolumeClaim:
         claimName: workflow-ref-hg38-dev
-        readOnly: true
   imagePullSecrets:
     - name: mgbio-cred
     - name: mcdb-bot
@@ -185,9 +184,7 @@ spec:
             - name: read_group_id
               value: 2895626107 #unique-id
             - name: read_group_fields
-              value: "\"--rg\", {{item}}"
-              withItems:
-              - "\"CN:WUGSC\""
+              value: "PU:H3MYFBBXX5.4.GCCAAT SM:H_NJ-HCC1395-HCC1395_RNA LB:Pooled_RNA_2891007020-cD1-lib1 PL:Illumina CN:WUGSC" ## coma seperated lista
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: strand

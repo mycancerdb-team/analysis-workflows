@@ -10,6 +10,6 @@ date
 aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/cancer-exome/" "${OUTPUTDIR}/samples/cancer-exome/" --recursive
 aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/somatic-exome/" "${OUTPUTDIR}/samples/somatic-exome/" --recursive
 aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/cancer-rna/" "${OUTPUTDIR}/samples/cancer-rna/" --recursive
-mkdir -p ${OUTPUTDIR}/output
+mkdir -p ${OUTPUTDIR}/output/trimmed_read
 date
 :
