@@ -1,0 +1,147 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: immuno-rnaseq-workflow
+spec:
+  volumes:
+    - name: pvc-reference
+      persistentVolumeClaim:
+        claimName: workflow-ref-hg38-dev #### This is subject to change.
+        readOnly: true
+  templates:
+  - name: trim-fastq
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: threads
+      - name: rna-fastq-r1
+      - name: rna-fastq-r2
+      - name: trim-adapter-file
+      - name: trim-adapter-end
+      - name: trim-adapter-min-overlap
+      - name: trim-max_uncalled
+      - name: trim-min-readlength
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/bisulfite:v1.4
+      command: ['/opt/flexbar/flexbar']
+      args: ["--adapter-min-overlap", "{{inputs.parameters.trim-adapter-min-overlap}}", "--adapter-trim-end", "{{inputs.parameters.trim-adapter-end}}", "--adapters", "{{inputs.parameters.trim-adapter-file}}", "--max-uncalled", "{{inputs.parameters.trim-max_uncalled}}", "--min-read-length", "{{inputs.parameters.trim-min-readlength}}", "--threads", "{{inputs.parameters.threads}}", "--reads", "{{inputs.parameters.rna-fastq-r1}}", "--reads2", "{{inputs.parameters.rna-fastq-r2}}", "--target", "{{inputs.parameters.output-dir}}/trimmed_read", "--stdout-log"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+      - name: trimmed_fastq1
+        value: "{{inputs.parameters.output-dir}}/trimmed_read/trimmed_read_1.fastq"
+      - name: trimmed_fastq2
+        value: "{{inputs.parameters.output-dir}}/trimmed_read/trimmed_read_2.fastq"
+###########
+  - name: hisat2-align
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: threads
+      - name: trimmed_fastq1
+      - name: trimmed_fastq2
+      - name: read_group_id
+      - name: read_group_fields
+      - name: strand
+      - name: reference_index
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/rnaseq:1.0.0
+      command: ["/usr/bin/hisat2"]
+      args: ["-p", "{{inputs.parameters.threads}}", "--rg-id", "{{inputs.parameters.read_group_id}}", "{{inputs.parameters.read_group_fields}}", "-x", "{{inputs.parameters.reference_index}}", "--dta", "--rna-strandness RF", "-1", "{{inputs.parameters.trimmed_fastq1}}", "-2", "{{inputs.parameters.trimmed_fastq2}}", "|", "/usr/bin/sambamba", "view", "-S", "-f", "bam", "-l", "0", "/dev/stdin", "|", "/usr/bin/sambamba", "sort", "-t", "{{inputs.parameters.threads}}", "-m", "8G", "-o", "{{inputs.parameters.output-dir}}/aligned.bam", "/dev/stdin"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+      - name: aligned_bam
+        value: "{{inputs.parameters.output-dir}}/aligned.bam"
+#############
+  - name: kallisto-run
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: threads
+      - name: trimmed_fastq1
+      - name: trimmed_fastq2
+      - name: strand
+      - name: kallisto_index
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/rnaseq:1.0.0
+      command: ["/usr/bin/kallisto"]
+      args: ["quant",  "-i", "{{inputs.parameters.kallisto_index}}", "-o", "{{inputs.parameters.output-dir}}/kallisto", "-t", "{{inputs.parameters.threads}}", "-b", "100", "--fusion", "--fr-stranded", "{{inputs.parameters.trimmed_fastq1}}", "{{inputs.parameters.trimmed_fastq2}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+      - name: expression_transcript_table
+        value: "{{inputs.parameters.output-dir}}/kallisto/abundance.tsv"
+      - name: expression_transcript_h5
+        value: "{{inputs.parameters.output-dir}}/kallisto/abundance.h5"
+      - name: fusion_evidence
+        value: "{{inputs.parameters.output-dir}}/kallisto/fusion.txt"
+##############
+  - name: rna-transcript-to-gene
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: transcript_table_h5
+      - name: gene_transcript_lookup_table
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/rnaseq:1.0.0
+      workingDir: "{{inputs.parameters.output-dir}}"
+      command: ["/usr/local/bin/Rscript"]
+      args: ["/usr/src/transcript_to_gene.R", "{{inputs.parameters.gene_transcript_lookup_table}}", "{{inputs.parameters.transcript_table_h5}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+      - name: gene_abundance
+        value: "{{inputs.parameters.output-dir}}/gene_abundance.tsv"

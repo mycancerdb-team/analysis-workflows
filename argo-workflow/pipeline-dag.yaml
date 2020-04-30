@@ -1,0 +1,238 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: mgbio-pipeline
+spec:
+  volumes:
+    - name: pvc-reference
+      persistentVolumeClaim:
+        claimName: workflow-ref-hg38-dev
+        readOnly: true
+  imagePullSecrets:
+    - name: mgbio-cred
+    - name: mcdb-bot
+  entrypoint: immuno-pipeline
+  arguments:
+    parameters:
+    - name: id
+    - name: ns
+    - name: pvc
+    - name: size
+    - name: output-dir
+    - name: s3-gen-dir
+    - name: vault-name
+    - name: rna-fastq-r1
+    - name: rna-fastq-r2
+    - name: strand
+  onExit: exit-handler
+  templates:
+  - name: generate-pvc
+    inputs:
+      parameters:
+      - name: ns
+      - name: pvc
+      - name: size
+    resource:
+      action: create
+      #successCondition: status.phase = Bound
+      #failureCondition: status.phase != Bound
+      manifest: |
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: {{inputs.parameters.pvc}}
+          namespace: {{inputs.parameters.ns}}
+        spec:
+          accessModes:
+          - ReadWriteMany
+          resources:
+            requests:
+              storage: {{inputs.parameters.size}}
+          storageClassName: rook-cephfs
+        ---
+    outputs:
+      parameters:
+        - name: pvc-name
+          valueFrom:
+            jsonPath: '{.metadata.name}'
+  - name: get-data
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: vault-name
+      - name: id
+      - name: s3-gen-dir
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mcdb-bots/bootstrap:mgbio
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      env:
+      - name: VAULT_ENDPOINT
+        value: '{{inputs.parameters.vault-name}}'
+      - name: PATIENT_ID
+        value: '{{inputs.parameters.id}}'
+      - name: GENOMIC_PATH
+        value: '{{inputs.parameters.s3-gen-dir}}'
+  - name: cleanup
+    inputs:
+      parameters:
+      - name: vault-name
+        value: "{{workflow.parameters.vault-name}}"
+      - name: pvc
+        value: "{{workflow.parameters.pvc}}"
+    volumes:
+      - name: '{{inputs.parameters.pvc}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc}}'
+    container:
+      image: docker.cancerdb.io/mcdb-bots/wrkflw-cleanup:mgbio
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc}}'
+        mountPath: /data
+      env:
+      - name: VAULT_ENDPOINT
+        value: '{{inputs.parameters.vault-name}}'
+  - name: exit-handler
+    steps:
+    - - name: cleanup
+        template: cleanup
+  - name: immuno-pipeline
+    dag:
+      tasks:
+      - name: generate-pvc-data
+        template: generate-pvc
+        arguments:
+          parameters:
+            - name: ns
+              value: "{{workflow.parameters.ns}}"
+            - name: pvc
+              value: "{{workflow.parameters.pvc}}"
+            - name: size
+              value: "{{workflow.parameters.size}}"
+      - name: bootstrap-data
+        template: get-data
+        dependencies: [generate-pvc-data]
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: vault-name
+              value: "{{workflow.parameters.vault-name}}"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: s3-gen-dir
+              value: "{{workflow.parameters.s3-gen-dir}}"
+##Begin RNA-Seq Steps
+      - name: rna-seq-trim-reads
+        dependencies: [bootstrap-data]
+        templateRef:
+          name: immuno-rnaseq-workflow
+          template: trim-fastq
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "20Gi"
+            - name: threads
+              value: 8
+            - name: trim-adapter-file
+              value: /ref-hg38/psomagen.fa
+            - name: trim-adapter-end
+              value: 'RIGHT'
+            - name: trim-adapter-min-overlap
+              value: 7
+            - name: trim-max_uncalled
+              value: 300
+            - name: trim-min-readlength
+              value: 25
+            - name: rna-fastq-r1
+              value: "{{workflow.parameters.rna-fastq-r1}}"
+            - name: rna-fastq-r2
+              value: "{{workflow.parameters.rna-fastq-r2}}"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+      - name: rna-seq-hisat2-align
+        dependencies: [rna-seq-trim-reads]
+        templateRef:
+          name: immuno-rnaseq-workflow
+          template: hisat2-align
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "24"
+            - name: "mem"
+              value: "32Gi"
+            - name: threads
+              value: 24
+            - name: trimmed_fastq1
+              value: "{{tasks.rna-seq-trim-reads.outputs.parameters.trimmed_fastq1}}"
+            - name: trimmed_fastq2
+              value: "{{tasks.rna-seq-trim-reads.outputs.parameters.trimmed_fastq2}}"
+            - name: reference_index
+              value: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/hisat2.1.0_index/GRCh38DH
+            - name: read_group_id
+              value: 2895626107 #unique-id
+            - name: read_group_fields
+              value: "\"--rg\", {{item}}"
+              withItems:
+              - "\"CN:WUGSC\""
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: strand
+              value: "{{workflow.parameters.strand}}"
+      - name: rna-seq-kallisto
+        dependencies: [rna-seq-hisat2-align]
+        templateRef:
+          name: immuno-rnaseq-workflow
+          template: kallisto-run
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "16"
+            - name: "mem"
+              value: "64Gi"
+            - name: threads
+              value: 16
+            - name: trimmed_fastq1
+              value: "{{tasks.rna-seq-trim-reads.outputs.parameters.trimmed_fastq1}}"
+            - name: trimmed_fastq2
+              value: "{{tasks.rna-seq-trim-reads.outputs.parameters.trimmed_fastq2}}"
+            - name: kallisto_index
+              value: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/Homo_sapiens.GRCh38.cdna.all.fa.kallisto.idx
+            - name: strand
+              value: "{{workflow.parameters.strand}}"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+      - name: rna-seq-transcript-gene
+        dependencies: [rna-seq-kallisto]
+        templateRef:
+          name: immuno-rnaseq-workflow
+          template: rna-transcript-to-gene
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "1"
+            - name: "mem"
+              value: "2Gi"
+            - name: transcript_table_h5
+              value: "{{tasks.rna-seq-kallisto.outputs.parameters.expression_transcript_h5}}"
+            - name: gene_transcript_lookup_table
+              value: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/ensembl90.transcriptToGene.tsv
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"

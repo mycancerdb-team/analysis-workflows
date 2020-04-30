@@ -1,0 +1,10 @@
+id: mcdb000
+ns: argo
+pvc: immuno-data-pvc
+size: 2000Gi
+output-dir: /data/output
+s3-gen-dir: genomic-data/RFS-000
+vault-name: s3://mcdb-vault004
+rna-fastq-r1: /data/samples/cancer-rna/Jaime-Leandro-Cancer-RNA_1.fastq.gz
+rna-fastq-r2: /data/samples/cancer-rna/Jaime-Leandro-Cancer-RNA_2.fastq.gz
+strand: "first"

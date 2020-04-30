@@ -1,0 +1,16 @@
+###List of PVC claims for the Argo workflow.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: workflow-data-dev #inputs (patient genome files) and outputs (result sets from workflow)saved here.
+  #We generate this per workflow. #mounted at /data/{inputs,outputs} /data/inputs/genomic_samples/ location for workflow dataset input
+  # We also store the run config here in /data/inputs/run_config.yaml /data/scratch
+  namespace: argo
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 2000Gi
+  storageClassName: rook-cephfs
+---
