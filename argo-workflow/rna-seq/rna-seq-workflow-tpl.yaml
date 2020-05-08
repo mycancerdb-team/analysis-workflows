@@ -95,7 +95,7 @@ spec:
     outputs:
       parameters:
       - name: aligned_bam
-        value: "{{inputs.parameters.output-dir}}/aligned.bam"
+        value: "{{inputs.parameters.output-dir}}/hisat2_align/aligned_bam/aligned.bam"
 #############
   - name: kallisto-run
     inputs:
@@ -162,3 +162,192 @@ spec:
       parameters:
       - name: gene_abundance
         value: "{{inputs.parameters.output-dir}}/gene_abundance.tsv"
+##############
+  - name: merge-bams
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: threads
+      - name: "cpu"
+      - name: "mem"
+      - name: bam1
+      - name: bam2
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/biscuit:0.3.8.2
+      command: ["/usr/bin/sambamba_merge"]
+      args: ["{{inputs.parameters.threads}}", "{{inputs.parameters.output-dir}}/merged_bam/merged.bam", "{{inputs.parameters.bam1}}", "{{inputs.parameters.bam2}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: "{{inputs.parameters.pvc-name}}"
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+      - name: merged_bam
+        value: "{{inputs.parameters.output-dir}}/merged_bam/merged.bam"
+      - name: merged_bam_bai
+        value: "{{inputs.parameters.output-dir}}/merged_bam/merged.bai"
+##############
+  - name: index-bam
+    inputs:
+      parameters:
+      - name: "cpu"
+      - name: "mem"
+      - name: id
+      - name: output-dir
+      - name: pvc-name
+      - name: bam-file ## Merged Or Aligned
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/samtools-cwl:1.0.0
+      command: ["/opt/samtools/bin/samtools"]
+      args: ["index", "{{inputs.parameters.bam-file}}", "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/{{inputs.parameters.id}}.bai"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+      - name: indexed_bam_bai
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/{{inputs.parameters.id}}.bai"
+#################
+  - name: mark-dup
+    inputs:
+      parameters:
+      - name: "cpu" #10
+      - name: "mem" #30
+      - name: id
+      - name: threads
+      - name: output-dir
+      - name: pvc-name
+      - name: bam-file ##Merge or Aligned
+      - name: input-sort-order
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/mark_duplicates-cwl:1.0.1
+      command: ["/root/markduplicates_helper.sh"]
+      args: ["{{inputs.parameters.bam-file}}", "{{inputs.parameters.threads}}", "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/MarkedSorted.bam", "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}.mark_dups_metrics.txt", "{{inputs.parameters.input-sort-order}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+      - name: marksorted_bam
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/MarkedSorted.bam"
+      - name: marksorted-bam_bai
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/MarkedSorted.bam.bai"
+      - name: metrics_file
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}.mark_dups_metrics.txt"
+#################
+  - name: stringtie
+    inputs:
+      parameters:
+      - name: "cpu"
+      - name: "mem"
+      - name: threads
+      - name: pvc-name
+      - name: output-dir
+      - name: bam-file
+      - name: strand
+      - name: id #sample-name
+      - name: reference-annotation
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/stringtie:1.0.0
+      env:
+      - name: THREADS
+        value: "{{inputs.parameters.threads}}"
+      - name: STRAND
+        value: "{{inputs.parameters.strand}}"
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      - name: REF_ANNOTATION
+        value: "{{inputs.parameters.reference-annotation}}"
+      - name: SAMPLE_NAME
+        value: "{{inputs.parameters.id}}"
+      - name: BAM
+        value: "{{inputs.parameters.bam-file}}"
+      command: ["/bin/bash", "/root/markduplicates_helper.sh"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+      - name: transcript_gtf
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/stringtie_transcripts.gtf"
+      - name: gene_expression_tsv
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/stringtie_gene_expression.tsv"
+#####################
+  - name: gen-qc-metrics
+    inputs:
+      parameters:
+      - name: "cpu"
+      - name: "mem"
+      - name: threads
+      - name: pvc-name
+      - name: id
+      - name: bam-file
+      - name: output-dir
+      - name: strand
+      - name: refFlat
+      - name: ribsomal-ints
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/qc-metrics:1.0.0
+      env:
+      - name: STRAND
+        value: "{{inputs.parameters.strand}}"
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      - name: ID
+        value: "{{inputs.parameters.id}}"
+      - name: REFFLAT
+        value: "{{inputs.parameters.refFlat}}"
+      - name: RIBOINTS
+        value: "{{inputs.parameters.ribsomal-ints}}"
+      - name: BAM
+        value: "{{inputs.parameters.bam-file}}"
+      command: ["/bin/bash", "/root/markduplicates_helper.sh"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+      - name: rna_metrics_txt
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/rna_metrics.txt"
+      - name: rna_metrics_pdf
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/rna_metrics.pdf"

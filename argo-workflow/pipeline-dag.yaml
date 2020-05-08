@@ -170,9 +170,9 @@ spec:
             - name: pvc-name
               value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
             - name: "cpu"
-              value: "24"
+              value: "28"
             - name: "mem"
-              value: "32Gi"
+              value: "90Gi"
             - name: threads
               value: 24
             - name: trimmed_fastq1
@@ -233,3 +233,97 @@ spec:
               value: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/ensembl90.transcriptToGene.tsv
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
+      - name: index-bam
+        dependencies: [rna-seq-hisat2-align]
+        templateRef:
+          name: immuno-rnaseq-workflow
+          template: index-bam
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "10"
+            - name: "mem"
+              value: "20Gi"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: bam-file
+              value: "{{tasks.rna-seq-hisat2-align.outputs.parameters.aligned_bam}}"
+      - name: mark-duplicates
+        dependencies: [rna-seq-hisat2-align]
+        templateRef:
+          name: immuno-rnaseq-workflow
+          template: mark-dup
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "38"
+            - name: "mem"
+              value: "50Gi"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: threads
+              value: 10
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: bam-file
+              value: "{{tasks.rna-seq-hisat2-align.outputs.parameters.aligned_bam}}"
+            - name: input-sort-order
+              value: "{{workflow.parameters.input-sort-order}}"
+      - name: run-stringtie
+        dependencies: [mark-duplicates]
+        templateRef:
+          name: immuno-rnaseq-workflow
+          template: stringtie
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "20"
+            - name: "mem"
+              value: "50Gi"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: threads
+              value: 20
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: bam-file
+              value: "{{tasks.mark-duplicates.outputs.parameters.marksorted_bam}}"
+            - name: strand
+              value: "{{workflow.parameters.strand}}"
+            - name: reference-annotation
+              value: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/Homo_sapiens.GRCh38DH.90.gtf
+      - name: qc-metrics
+        dependencies: [index-bam]
+        templateRef:
+          name: immuno-rnaseq-workflow
+          template: gen-qc-metrics
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "1"
+            - name: "mem"
+              value: "20Gi"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: threads
+              value: 1
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: strand
+              value: "{{workflow.parameters.strand}}"
+            - name: bam-file
+              value: "{{tasks.index-bam.outputs.parameters.indexed_bam_bai}}"
+            - name: refFlat
+              value: /ref-hg38/GRC-human-build38_human_90_38_U2AF1_fix/rna_seq_annotation/Homo_sapiens.GRCh38.90.refFlat.txt
+            - name: ribsomal-ints
+              value: /ref-hg38/GRC-human-build38_human_90_38_U2AF1_fix/rna_seq_annotation/Homo_sapiens.GRCh38.90.rRNA.interval_list

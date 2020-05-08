@@ -8,3 +8,4 @@ vault-name: s3://mcdb-vault004
 rna-fastq-r1: /data/samples/cancer-rna/Jaime-Leandro-Cancer-RNA_1.fastq.gz
 rna-fastq-r2: /data/samples/cancer-rna/Jaime-Leandro-Cancer-RNA_2.fastq.gz
 strand: "first"
+input-sort-order: coordinate
