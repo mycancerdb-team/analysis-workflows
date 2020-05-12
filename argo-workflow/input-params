@@ -7,5 +7,12 @@ s3-gen-dir: genomic-data/RFS-000
 vault-name: s3://mcdb-vault004
 rna-fastq-r1: /data/samples/cancer-rna/Jaime-Leandro-Cancer-RNA_1.fastq.gz
 rna-fastq-r2: /data/samples/cancer-rna/Jaime-Leandro-Cancer-RNA_2.fastq.gz
+normal-fastq-r1: /data/samples/somatic-exome/Jaime-Leandro-Normal-Exome_R1.fastq.gz
+normal-fastq-r2: /data/samples/somatic-exome/Jaime-Leandro-Normal-Exome_R2.fastq.gz
+cancer-fastq-r1: /data/samples/cancer-exome/Jaime-Leandro-Cancer-Exome_R1.fastq.gz
+cancer-fastq-r2: /data/samples/cancer-exome/Jaime-Leandro-Cancer-Exome_R2.fastq.gz
+normal-readGroup: "@RG\tID:2895499223\tPU:H7HY2CCXX.3.ATCACGGT\tSM:H_NJ-HCC1395-HCC1395\tLB:H_NJ-HCC1395-HCC1395-lg24-lib1\tPL:Illumina\tCN:WUGSC"
+cancer-readGroup: "@RG\tID:2895499223\tPU:H7HY2CCXX.3.ATCACGGT\tSM:H_NJ-HCC1395-HCC1395\tLB:H_NJ-HCC1395-HCC1395-lg24-lib1\tPL:Illumina\tCN:WUGSC"
+genome-reference: /ref-hg38/reference_genome/all_sequences.fa
 strand: "first"
 input-sort-order: coordinate

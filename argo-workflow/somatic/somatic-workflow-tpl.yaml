@@ -11,3 +11,43 @@ spec:
     - name: mgbio-cred
     - name: mcdb-bot
   templates:
+  - name: bwa-align
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: id
+      - name: "cpu"
+      - name: "mem"
+      - name: threads
+      - name: data-type # normal or cancer
+      - name: exome-fastq-r1
+      - name: exome-fastq-r2
+      - name: readGroup
+      - name: reference
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/alignment_helper-cwl:1.0.0
+      env:
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      - name: ID
+        value: "{{inputs.parameters.id}}"
+      - name: DATATYPE
+        valye: "{{inputs.parameters.data-type}}"
+      command: ['/root/run_step.sh']
+      arguments: ["-1", "{{inputs.parameters.exome-fastq-r1}}", "-2", "{{inputs.parameters.exome-fastq-r2}}", "-g", "{{inputs.parameters.readGroup}}", "-r", "{{inputs.parameters.reference}}", "-n", "{{inputs.parameters.threads}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: aligned_bam
+          value: "{{inputs.parameters.output-dir}}/normal-align/aligned.bam"

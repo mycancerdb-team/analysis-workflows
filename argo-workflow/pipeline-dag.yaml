@@ -22,6 +22,14 @@ spec:
     - name: vault-name
     - name: rna-fastq-r1
     - name: rna-fastq-r2
+    - name: normal-fastq-r1
+    - name: normal-fastq-r2
+    - name: cancer-fastq-r1
+    - name: cancer-fastq-r2
+    - name: normal-readGroup
+    - name: cancer-readGroup
+    - name: genome-reference
+    - name: input-sort-order
     - name: strand
   onExit: exit-handler
   templates:
@@ -128,6 +136,7 @@ spec:
               value: "{{workflow.parameters.id}}"
             - name: s3-gen-dir
               value: "{{workflow.parameters.s3-gen-dir}}"
+
 ##Begin RNA-Seq Steps
       - name: rna-seq-trim-reads
         dependencies: [bootstrap-data]
@@ -327,3 +336,63 @@ spec:
               value: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/Homo_sapiens.GRCh38.90.refFlat.txt
             - name: ribsomal-ints
               value: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/Homo_sapiens.GRCh38.90.rRNA.interval_list
+##End RNA-Seq Steps
+##Begin Somatic Steps
+      - name: bwa-align-normal-exome
+        dependencies: [bootstrap-data]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: bwa-align
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "1"
+            - name: "mem"
+              value: "20Gi"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: threads
+              value: 1
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: normal
+            - name: exome-fastq-r1
+              value: {{workflow.parameters.normal-fastq-r1}}
+            - name: exome-fastq-r2
+              value: {{workflow.parameters.normal-fastq-r2}}
+            - name: readGroup
+              value: {{workflow.parameters.normal-readGroup}}
+            - name: reference
+              value: {{workflow.parameters.genome-reference}}
+      - name: bwa-align-cancer-exome
+        dependencies: [bootstrap-data]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: bwa-align
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "1"
+            - name: "mem"
+              value: "20Gi"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: threads
+              value: 1
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: cancer
+            - name: exome-fastq-r1
+              value: {{workflow.parameters.cancer-fastq-r1}}
+            - name: exome-fastq-r2
+              value: {{workflow.parameters.cancer-fastq-r2}}
+            - name: readGroup
+              value: {{workflow.parameters.cancer-readGroup}}
+            - name: reference
+              value: {{workflow.parameters.genome-reference}}
