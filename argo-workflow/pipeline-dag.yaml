@@ -322,8 +322,8 @@ spec:
             - name: strand
               value: "{{workflow.parameters.strand}}"
             - name: bam-file
-              value: "{{tasks.index-bam.outputs.parameters.indexed_bam_bai}}"
+              value: "{{tasks.rna-seq-hisat2-align.outputs.parameters.aligned_bam}}"
             - name: refFlat
-              value: /ref-hg38/GRC-human-build38_human_90_38_U2AF1_fix/rna_seq_annotation/Homo_sapiens.GRCh38.90.refFlat.txt
+              value: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/Homo_sapiens.GRCh38.90.refFlat.txt
             - name: ribsomal-ints
-              value: /ref-hg38/GRC-human-build38_human_90_38_U2AF1_fix/rna_seq_annotation/Homo_sapiens.GRCh38.90.rRNA.interval_list
+              value: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/Homo_sapiens.GRCh38.90.rRNA.interval_list

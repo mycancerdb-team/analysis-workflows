@@ -291,7 +291,6 @@ spec:
         value: "{{inputs.parameters.id}}"
       - name: BAM
         value: "{{inputs.parameters.bam-file}}"
-      command: ["/bin/bash", "/root/markduplicates_helper.sh"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -338,7 +337,6 @@ spec:
         value: "{{inputs.parameters.ribsomal-ints}}"
       - name: BAM
         value: "{{inputs.parameters.bam-file}}"
-      command: ["/bin/bash", "/root/markduplicates_helper.sh"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
