@@ -1,6 +1,6 @@
 id: mcdb000
 ns: argo
-pvc: immuno-data-pvc
+pvc: immuno-data-pvc-000
 size: 2000Gi
 output-dir: /data/output
 s3-gen-dir: genomic-data/RFS-000
@@ -14,5 +14,8 @@ cancer-fastq-r2: /data/samples/cancer-exome/Jaime-Leandro-Cancer-Exome_R2.fastq.
 normal-readGroup: "@RG\tID:2895499223\tPU:H7HY2CCXX.3.ATCACGGT\tSM:H_NJ-HCC1395-HCC1395\tLB:H_NJ-HCC1395-HCC1395-lg24-lib1\tPL:Illumina\tCN:WUGSC"
 cancer-readGroup: "@RG\tID:2895499223\tPU:H7HY2CCXX.3.ATCACGGT\tSM:H_NJ-HCC1395-HCC1395\tLB:H_NJ-HCC1395-HCC1395-lg24-lib1\tPL:Illumina\tCN:WUGSC"
 genome-reference: /ref-hg38/reference_genome/all_sequences.fa
+bqsr-intervals: ch17
+known-indels: /ref-hg38/known_variants/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz
+dbsnp-vcf: /ref-hg38/known_variants/dbsnp_146.hg38.vcf.gz
 strand: "first"
 input-sort-order: coordinate

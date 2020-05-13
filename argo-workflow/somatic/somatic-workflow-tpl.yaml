@@ -16,7 +16,6 @@ spec:
       parameters:
       - name: pvc-name
       - name: output-dir
-      - name: id
       - name: "cpu"
       - name: "mem"
       - name: threads
@@ -35,12 +34,10 @@ spec:
       env:
       - name: OUTPUTDIR
         value: "{{inputs.parameters.output-dir}}"
-      - name: ID
-        value: "{{inputs.parameters.id}}"
       - name: DATATYPE
-        valye: "{{inputs.parameters.data-type}}"
+        value: "{{inputs.parameters.data-type}}"
       command: ['/root/run_step.sh']
-      arguments: ["-1", "{{inputs.parameters.exome-fastq-r1}}", "-2", "{{inputs.parameters.exome-fastq-r2}}", "-g", "{{inputs.parameters.readGroup}}", "-r", "{{inputs.parameters.reference}}", "-n", "{{inputs.parameters.threads}}"]
+      args: ["-1", "{{inputs.parameters.exome-fastq-r1}}", "-2", "{{inputs.parameters.exome-fastq-r2}}", "-g", "{{inputs.parameters.readGroup}}", "-r", "{{inputs.parameters.reference}}", "-n", "{{inputs.parameters.threads}}"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -50,4 +47,96 @@ spec:
     outputs:
       parameters:
         - name: aligned_bam
-          value: "{{inputs.parameters.output-dir}}/normal-align/aligned.bam"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}/aligned.bam"
+  - name: name-sort
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: threads
+      - name: data-type # normal or cancer or rna
+      - name: bam-file
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/sambamba-cwl:0.6.4
+      command: ['/usr/bin/sambamba']
+      args: ["sort", "{{inputs.parameters.bam-file}}", "-t", "{{inputs.parameters.threads}}", "-m", "32G", "-n", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_NameSorted.bam"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: name_sorted_bam
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_NameSorted.bam"
+  - name: bqsr
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: reference
+      - name: data-type # normal or cancer or rna
+      - name: bam-file
+      - name: bqsr-intervals
+      - name: known-indels
+      - name: dbsnp-vcf
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/gatk-cwl:3.6.0
+      command: ['/usr/bin/java']
+      args: ["-Xmx32g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "BaseRecalibrator", "-L", "{{inputs.parameters.bqsr-intervals}}", "-R", "{{inputs.parameters.reference}}", "-I", "{{inputs.parameters.bam-file}}", "-knownSites", "{{inputs.parameters.known-indels}}", "-knownSites", "{{inputs.parameters.dbsnp-vcf}}", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_bqsr.table", "--preserve_qscores_less_than", "6", "--disable_auto_index_creation_and_locking_when_reading_rods", "--disable_bam_indexing", "-dfrac", ".1", "-nct", "4"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: bqsr_table
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_bqsr.table"
+  - name: apply-bqsr
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: id
+      - name: reference
+      - name: data-type # normal or cancer or rna
+      - name: bam-file
+      - name: bqsr-table
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/gatk-cwl:3.6.0
+      command: ['/usr/bin/java']
+      args: ["-Xmx16g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "PrintReads", "-R", "{{inputs.parameters.reference}}", "-I", "{{inputs.parameters.bam-file}}", "-BQSR", "{{inputs.parameters.bqsr-table}}", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/{{inputs.parameters.data-type}}_final.bam", "-preserveQ", "6", "-SQQ", "10", "-SQQ", "20", "-SQQ", "30", "-nct", "8", "--disable_indel_quals"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: bqsr_final_bam
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/{{inputs.parameters.data-type}}_final.bam"

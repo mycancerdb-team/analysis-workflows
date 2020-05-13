@@ -104,6 +104,7 @@ spec:
       - name: output-dir
       - name: "cpu"
       - name: "mem"
+      - name: id
       - name: threads
       - name: trimmed_fastq1
       - name: trimmed_fastq2
@@ -117,7 +118,7 @@ spec:
     container:
       image: mgibio/rnaseq:1.0.0
       command: ["/usr/bin/kallisto"]
-      args: ["quant",  "-i", "{{inputs.parameters.kallisto_index}}", "-o", "{{inputs.parameters.output-dir}}/kallisto", "-t", "{{inputs.parameters.threads}}", "-b", "100", "--fusion", "--fr-stranded", "{{inputs.parameters.trimmed_fastq1}}", "{{inputs.parameters.trimmed_fastq2}}"]
+      args: ["quant",  "-i", "{{inputs.parameters.kallisto_index}}", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/kallisto", "-t", "{{inputs.parameters.threads}}", "-b", "100", "--fusion", "--fr-stranded", "{{inputs.parameters.trimmed_fastq1}}", "{{inputs.parameters.trimmed_fastq2}}"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -127,11 +128,11 @@ spec:
     outputs:
       parameters:
       - name: expression_transcript_table
-        value: "{{inputs.parameters.output-dir}}/kallisto/abundance.tsv"
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/kallisto/abundance.tsv"
       - name: expression_transcript_h5
-        value: "{{inputs.parameters.output-dir}}/kallisto/abundance.h5"
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/kallisto/abundance.h5"
       - name: fusion_evidence
-        value: "{{inputs.parameters.output-dir}}/kallisto/fusion.txt"
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/kallisto/fusion.txt"
 ##############
   - name: rna-transcript-to-gene
     inputs:
@@ -140,6 +141,7 @@ spec:
       - name: output-dir
       - name: "cpu"
       - name: "mem"
+      - name: id
       - name: transcript_table_h5
       - name: gene_transcript_lookup_table
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
@@ -149,7 +151,7 @@ spec:
           claimName: '{{inputs.parameters.pvc-name}}'
     container:
       image: mgibio/rnaseq:1.0.0
-      workingDir: "{{inputs.parameters.output-dir}}"
+      workingDir: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}"
       command: ["/usr/local/bin/Rscript"]
       args: ["/usr/src/transcript_to_gene.R", "{{inputs.parameters.gene_transcript_lookup_table}}", "{{inputs.parameters.transcript_table_h5}}"]
       imagePullPolicy: Always
@@ -161,7 +163,7 @@ spec:
     outputs:
       parameters:
       - name: gene_abundance
-        value: "{{inputs.parameters.output-dir}}/gene_abundance.tsv"
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/gene_abundance.tsv"
 ##############
   - name: merge-bams
     inputs:
@@ -203,6 +205,7 @@ spec:
       - name: id
       - name: output-dir
       - name: pvc-name
+      - name: data-type
       - name: bam-file ## Merged Or Aligned
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
@@ -212,7 +215,7 @@ spec:
     container:
       image: mgibio/samtools-cwl:1.0.0
       command: ["/opt/samtools/bin/samtools"]
-      args: ["index", "{{inputs.parameters.bam-file}}", "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/{{inputs.parameters.id}}.bai"]
+      args: ["index", "{{inputs.parameters.bam-file}}", "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/{{inputs.parameters.data-type}}_index.bai"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -222,7 +225,7 @@ spec:
     outputs:
       parameters:
       - name: indexed_bam_bai
-        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/{{inputs.parameters.id}}.bai"
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/{{inputs.parameters.data-type}}_index.bai"
 #################
   - name: mark-dup
     inputs:
@@ -235,6 +238,7 @@ spec:
       - name: pvc-name
       - name: bam-file ##Merge or Aligned
       - name: input-sort-order
+      - name: data-type
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -243,7 +247,7 @@ spec:
     container:
       image: docker.cancerdb.io/mgbio-workflow/mark_duplicates-cwl:1.0.1
       command: ["/root/markduplicates_helper.sh"]
-      args: ["{{inputs.parameters.bam-file}}", "{{inputs.parameters.threads}}", "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/MarkedSorted.bam", "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}.mark_dups_metrics.txt", "{{inputs.parameters.input-sort-order}}"]
+      args: ["{{inputs.parameters.bam-file}}", "{{inputs.parameters.threads}}", "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/{{inputs.parameters.data-type}}_MarkedSorted.bam", "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/{{inputs.parameters.data-type}}_mark_dups_metrics.txt", "{{inputs.parameters.input-sort-order}}"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -253,11 +257,11 @@ spec:
     outputs:
       parameters:
       - name: marksorted_bam
-        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/MarkedSorted.bam"
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/{{inputs.parameters.data-type}}_MarkedSorted.bam"
       - name: marksorted-bam_bai
-        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/MarkedSorted.bam.bai"
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/{{inputs.parameters.data-type}}_MarkedSorted.bam.bai"
       - name: metrics_file
-        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}.mark_dups_metrics.txt"
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/{{inputs.parameters.data-type}}_mark_dups_metrics.txt"
 #################
   - name: stringtie
     inputs:
