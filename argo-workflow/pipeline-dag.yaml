@@ -319,7 +319,7 @@ spec:
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: bam-file
-              value: "{{tasks.mark-duplicates.outputs.parameters.marksorted_bam}}"
+              value: "{{tasks.rna-mark-duplicates.outputs.parameters.marksorted_bam}}"
             - name: strand
               value: "{{workflow.parameters.strand}}"
             - name: reference-annotation
@@ -374,15 +374,15 @@ spec:
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: data-type
-              value: normal
+              value: "normal"
             - name: exome-fastq-r1
-              value: {{workflow.parameters.normal-fastq-r1}}
+              value: "{{workflow.parameters.normal-fastq-r1}}"
             - name: exome-fastq-r2
-              value: {{workflow.parameters.normal-fastq-r2}}
+              value: "{{workflow.parameters.normal-fastq-r2}}"
             - name: readGroup
-              value: {{workflow.parameters.normal-readGroup}}
+              value: "{{workflow.parameters.normal-readGroup}}"
             - name: reference
-              value: {{workflow.parameters.genome-reference}}
+              value: "{{workflow.parameters.genome-reference}}"
       - name: bwa-align-cancer-exome
         dependencies: [bootstrap-data]
         templateRef:
@@ -401,15 +401,15 @@ spec:
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: data-type
-              value: cancer
+              value: "cancer"
             - name: exome-fastq-r1
-              value: {{workflow.parameters.cancer-fastq-r1}}
+              value: "{{workflow.parameters.cancer-fastq-r1}}"
             - name: exome-fastq-r2
-              value: {{workflow.parameters.cancer-fastq-r2}}
+              value: "{{workflow.parameters.cancer-fastq-r2}}"
             - name: readGroup
-              value: {{workflow.parameters.cancer-readGroup}}
+              value: "{{workflow.parameters.cancer-readGroup}}"
             - name: reference
-              value: {{workflow.parameters.genome-reference}}
+              value: "{{workflow.parameters.genome-reference}}"
 #name sort
       - name: name-sort-normal-exome
         dependencies: [bwa-align-normal-exome]

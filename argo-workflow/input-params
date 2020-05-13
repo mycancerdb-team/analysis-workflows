@@ -1,6 +1,6 @@
 id: mcdb000
 ns: argo
-pvc: immuno-data-pvc-000
+pvc: immuno-data-pvc
 size: 2000Gi
 output-dir: /data/output
 s3-gen-dir: genomic-data/RFS-000
