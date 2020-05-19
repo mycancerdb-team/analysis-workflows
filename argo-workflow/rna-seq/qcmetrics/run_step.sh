@@ -15,4 +15,4 @@ else
 fi
 
 
-/usr/bin/java -Xmx16g -jar /opt/picard/picard.jar CollectRnaSeqMetrics O="$OUTPUTDIR/$ID/rna_metrics.txt" CHART="$OUTPUTDIR/$ID/rna_metrics.pdf" REF_FLAT=$REFFLAT RIBOSOMAL_INTERVALS=$RIBOINTS $STRANDVAL I=$BAM
+/usr/bin/java -Xmx16g -jar /opt/picard/picard.jar CollectRnaSeqMetrics O="$OUTPUTDIR/${DATATYPE}_final/rna_metrics.txt" CHART="$OUTPUTDIR/${DATATYPE}_final/rna_metrics.pdf" REF_FLAT=$REFFLAT RIBOSOMAL_INTERVALS=$RIBOINTS $STRANDVAL I=$BAM

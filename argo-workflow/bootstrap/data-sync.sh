@@ -10,6 +10,11 @@ date
 aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/cancer-exome/" "${OUTPUTDIR}/samples/cancer-exome/" --recursive
 aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/somatic-exome/" "${OUTPUTDIR}/samples/somatic-exome/" --recursive
 aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/cancer-rna/" "${OUTPUTDIR}/samples/cancer-rna/" --recursive
-mkdir -p ${OUTPUTDIR}/output/{trimmed_read,hisat2_align/aligned_bam,merged_bam,${PATIENT_ID},cancer-align,normal-align}
+#RNA Folders
+mkdir -p ${OUTPUTDIR}/output/{rna_final,rna_trimmed_read,rna_hisat2_align/aligned_bam,rna_merged_bam,rna_index_bam}
+#Normal Folders
+mkdir -p ${OUTPUTDIR}/output/{normal_final,normal-align}
+#Cancer Folders
+mkdir -p ${OUTPUTDIR}/output/{cancer_final,cancer-align}
 date
 :
