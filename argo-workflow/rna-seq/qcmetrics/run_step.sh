@@ -2,8 +2,6 @@
 
 set -e
 
-set -e
-
 if [ $STRAND == 'first' ]
 then
   STRANDVAL="STRAND=SECOND_READ_TRANSCRIPTION_STRAND"

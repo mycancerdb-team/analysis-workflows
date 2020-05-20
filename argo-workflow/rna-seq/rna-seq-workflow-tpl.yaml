@@ -209,8 +209,10 @@ spec:
       - name: "mem"
       - name: data-type
       - name: output-dir
+      - name: dir-name
       - name: pvc-name
       - name: bam-file ## Merged Or Aligned
+      - name: id
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -219,7 +221,7 @@ spec:
     container:
       image: mgibio/samtools-cwl:1.0.0
       command: ["/opt/samtools/bin/samtools"]
-      args: ["index", "{{inputs.parameters.bam-file}}", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_index_bam/index.bai"]
+      args: ["index", "{{inputs.parameters.bam-file}}", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_{{inputs.parameters.dir-name}}/{{inputs.parameters.data-type}}_{{inputs.parameters.id}}.bai"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -229,7 +231,7 @@ spec:
     outputs:
       parameters:
       - name: indexed_bam_bai
-        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_index_bam/index.bai"
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_{{inputs.parameters.dir-name}}/{{inputs.parameters.data-type}}_{{inputs.parameters.id}}.bai"
 #################
   - name: mark-dup
     inputs:

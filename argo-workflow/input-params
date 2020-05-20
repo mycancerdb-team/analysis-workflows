@@ -1,4 +1,4 @@
-id: mcdb000
+id: 000
 ns: argo
 pvc: immuno-data-pvc
 size: 2000Gi
@@ -13,9 +13,27 @@ cancer-fastq-r1: /data/samples/cancer-exome/Jaime-Leandro-Cancer-Exome_R1.fastq.
 cancer-fastq-r2: /data/samples/cancer-exome/Jaime-Leandro-Cancer-Exome_R2.fastq.gz
 normal-readGroup: "@RG\tID:2895499223\tPU:H7HY2CCXX.3.ATCACGGT\tSM:H_NJ-HCC1395-HCC1395\tLB:H_NJ-HCC1395-HCC1395-lg24-lib1\tPL:Illumina\tCN:WUGSC"
 cancer-readGroup: "@RG\tID:2895499223\tPU:H7HY2CCXX.3.ATCACGGT\tSM:H_NJ-HCC1395-HCC1395\tLB:H_NJ-HCC1395-HCC1395-lg24-lib1\tPL:Illumina\tCN:WUGSC"
+rna-readGroup: "PU:H3MYFBBXX5.4.GCCAAT SM:H_NJ-HCC1395-HCC1395_RNA LB:Pooled_RNA_2891007020-cD1-lib1 PL:Illumina CN:WUGSC"
 genome-reference: /ref-hg38/reference_genome/all_sequences.fa
-bqsr-intervals: ch17
+bqsr-intervals: /ref-hg38/grch38_bait.interval_list
 known-indels: /ref-hg38/known_variants/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz
 dbsnp-vcf: /ref-hg38/known_variants/dbsnp_146.hg38.vcf.gz
 strand: "first"
 input-sort-order: coordinate
+bait-intervals: /ref-hg38/grch38_bait.interval_list
+target-intervals: /ref-hg38/grch38_bait.interval_list
+per-base-intervals: /ref-hg38/grch38_bait.interval_list
+per-target-intervals: /ref-hg38/grch38_bait.interval_list
+summary-intervals: /ref-hg38/grch38_bait.interval_list
+omni-vcf: /ref-hg38/known_variants/1000G_omni2.5.hg38.vcf.gz
+picard-metric-accumulation-level: ALL_READS
+qc_minimum_mapping_quality: 0
+qc_minimum_base_quality: 0
+ref-flat: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/Homo_sapiens.GRCh38.90.refFlat.txt
+ribsomal-ints: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/Homo_sapiens.GRCh38.90.rRNA.interval_list
+rna-reference-annotation: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/Homo_sapiens.GRCh38DH.90.gtf
+gene-transcript-lookup-table: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/ensembl90.transcriptToGene.tsv
+kallisto-index: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/Homo_sapiens.GRCh38.cdna.all.fa.kallisto.idx
+hisat-index: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/hisat2.1.0_index/GRCh38DH
+trim-adapter-file: /ref-hg38/psomagen.fa
+somalier-vcf: /ref-hg38//known_variants/somalier_GRCh38.vcf.gz

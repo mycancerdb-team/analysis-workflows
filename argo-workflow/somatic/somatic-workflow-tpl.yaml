@@ -47,7 +47,7 @@ spec:
     outputs:
       parameters:
         - name: aligned_bam
-          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}/aligned.bam"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_bwa/{{inputs.parameters.data-type}}-aligned.bam"
   - name: name-sort
     inputs:
       parameters:
@@ -66,7 +66,7 @@ spec:
     container:
       image: mgibio/sambamba-cwl:0.6.4
       command: ['/usr/bin/sambamba']
-      args: ["sort", "{{inputs.parameters.bam-file}}", "-t", "{{inputs.parameters.threads}}", "-m", "32G", "-n", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_NameSorted.bam"]
+      args: ["sort", "{{inputs.parameters.bam-file}}", "-t", "{{inputs.parameters.threads}}", "-m", "32G", "-n", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_namesort/{{inputs.parameters.data-type}}_NameSorted.bam"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -76,7 +76,41 @@ spec:
     outputs:
       parameters:
         - name: name_sorted_bam
-          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_NameSorted.bam"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_namesort/{{inputs.parameters.data-type}}_NameSorted.bam"
+  - name: mark-dup
+    inputs:
+      parameters:
+      - name: "cpu" #10
+      - name: "mem" #30
+      - name: threads
+      - name: data-type
+      - name: output-dir
+      - name: pvc-name
+      - name: bam-file ##Merge or Aligned
+      - name: input-sort-order
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/mark_duplicates-cwl:1.0.1
+      command: ["/root/markduplicates_helper.sh"]
+      args: ["{{inputs.parameters.bam-file}}", "{{inputs.parameters.threads}}", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_dups/{{inputs.parameters.data-type}}_MarkedSorted.bam", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}_MarkedSorted.bam", "{{inputs.parameters.input-sort-order}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+      - name: marksorted_bam
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_dups/{{inputs.parameters.data-type}}_MarkedSorted.bam"
+      - name: marksorted-bam_bai
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_dups/{{inputs.parameters.data-type}}_MarkedSorted.bam.bai"
+      - name: metrics_file
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}_mark_dups_metrics.txt"
   - name: bqsr
     inputs:
       parameters:
@@ -98,7 +132,7 @@ spec:
     container:
       image: mgibio/gatk-cwl:3.6.0
       command: ['/usr/bin/java']
-      args: ["-Xmx32g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "BaseRecalibrator", "-L", "{{inputs.parameters.bqsr-intervals}}", "-R", "{{inputs.parameters.reference}}", "-I", "{{inputs.parameters.bam-file}}", "-knownSites", "{{inputs.parameters.known-indels}}", "-knownSites", "{{inputs.parameters.dbsnp-vcf}}", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_bqsr.table", "--preserve_qscores_less_than", "6", "--disable_auto_index_creation_and_locking_when_reading_rods", "--disable_bam_indexing", "-dfrac", ".1", "-nct", "4"]
+      args: ["-Xmx32g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "BaseRecalibrator", "-L", "{{inputs.parameters.bqsr-intervals}}", "-R", "{{inputs.parameters.reference}}", "-I", "{{inputs.parameters.bam-file}}", "-knownSites", "{{inputs.parameters.known-indels}}", "-knownSites", "{{inputs.parameters.dbsnp-vcf}}", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_bqsr/{{inputs.parameters.data-type}}_bqsr.table", "--preserve_qscores_less_than", "6", "--disable_auto_index_creation_and_locking_when_reading_rods", "--disable_bam_indexing", "-dfrac", ".1", "-nct", "4"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -108,7 +142,7 @@ spec:
     outputs:
       parameters:
         - name: bqsr_table
-          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_bqsr.table"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_bqsr/{{inputs.parameters.data-type}}_bqsr.table"
   - name: apply-bqsr
     inputs:
       parameters:
@@ -129,7 +163,7 @@ spec:
     container:
       image: mgibio/gatk-cwl:3.6.0
       command: ['/usr/bin/java']
-      args: ["-Xmx16g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "PrintReads", "-R", "{{inputs.parameters.reference}}", "-I", "{{inputs.parameters.bam-file}}", "-BQSR", "{{inputs.parameters.bqsr-table}}", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/{{inputs.parameters.data-type}}_final.bam", "-preserveQ", "6", "-SQQ", "10", "-SQQ", "20", "-SQQ", "30", "-nct", "8", "--disable_indel_quals"]
+      args: ["-Xmx16g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "PrintReads", "-R", "{{inputs.parameters.reference}}", "-I", "{{inputs.parameters.bam-file}}", "-BQSR", "{{inputs.parameters.bqsr-table}}", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}_{{inputs.parameters.id}}.bam", "-preserveQ", "6", "-SQQ", "10", "-SQQ", "20", "-SQQ", "30", "-nct", "8", "--disable_indel_quals"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -139,4 +173,257 @@ spec:
     outputs:
       parameters:
         - name: bqsr_final_bam
-          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.id}}/{{inputs.parameters.data-type}}_final.bam"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}_{{inputs.parameters.id}}.bam"
+### QC Metrics
+  - name: insert-size-metrics
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: reference
+      - name: data-type # normal or cancer or rna
+      - name: bam-file
+      - name: metric-accumulation-level
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/picard-cwl:2.18.1
+      command: ['/usr/bin/java']
+      args: ["-Xmx24g", "-jar", "/usr/picard/picard.jar", "CollectInsertSizeMetrics", "O=", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}_InsertSizeMetrics.txt", "H=", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}_InsertSizeHistogram.pdf", "I=", "{{inputs.parameters.bam-file}}", "REFERENCE_SEQUENCE=", "{{inputs.parameters.reference}}", "METRIC_ACCUMULATION_LEVEL=", "{{inputs.parameters.metric-accumulation-level}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: insert_size_metrics
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}_InsertSizeMetrics.txt"
+        - name: insert_size_histogram
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}_InsertSizeHistogram.pdf"
+  - name: align-summary-metrics
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: reference
+      - name: data-type # normal or cancer or rna
+      - name: bam-file
+      - name: metric-accumulation-level
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/picard-cwl:2.18.1
+      command: ['/usr/bin/java']
+      args: ["-Xmx24g", "-jar", "/usr/picard/picard.jar", "CollectAlignmentSummaryMetrics", "OUTPUT=", "{{items.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}_AlignmentSummaryMetrics.txt", "INPUT=", "{{inputs.parameters.bam-file}}", "REFERENCE_SEQUENCE=", "{{inputs.parameters.reference}}", "METRIC_ACCUMULATION_LEVEL=", "{{inputs.parameters.metric-accumulation-level}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: alignment_summary_metrics
+          value: "{{items.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}_AlignmentSummaryMetrics.txt"
+## Collect HS Metrics
+  - name: collect-hs-metrics
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: reference
+      - name: data-type # normal or cancer or rna
+      - name: bam-file
+      - name: metric-accumulation-level
+      - name: bait-intervals
+      - name: target-intervals
+      - name: per_target_coverage
+      - name: per_base_coverage
+      - name: output_prefix
+      - name: minimum_mapping_quality
+      - name: minimum_base_quality
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/hs-metrics:1.0.0
+      env:
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      - name: DATATYPE
+        value: "{{inputs.parameters.data-type}}"
+      - name: BAMFILE
+        value: "{{inputs.parameters.bam-file}}"
+      - name: REFGENOME
+        value: "{{inputs.parameters.reference}}"
+      - name: METRICACCUMLVL
+        value: "{{inputs.parameters.metric-accumulation-level}}"
+      - name: BAITINTV
+        value: "{{inputs.parameters.bait-intervals}}"
+      - name: TRGTINTV
+        value: "{{inputs.parameters.target-intervals}}"
+      - name: PERTRGTCVRG
+        value: "{{inputs.parameters.per_target_coverage}}" #boolean
+      - name: PERBSECVRG
+        value: "{{inputs.parameters.per_base_coverage}}" #boolean
+      - name: OUTPTPRFX
+        value: "{{inputs.parameters.output_prefix}}"
+      - name: MINMPQL
+        value: "{{inputs.parameters.minimum_mapping_quality}}"
+      - name: MINBSQL
+        value: "{{inputs.parameters.minimum_base_quality}}"
+      command: ['/root/run_step.sh']
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: hs_metrics
+          value:  "{{items.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.output_prefix}}_{{inputs.parameters.data-type}}_HsMetrics.txt"
+        - name: per_target_coverage_metrics
+          value: "{{items.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.output_prefix}}_{{inputs.parameters.data-type}}_PerTargetCoverage.txt"
+        - name: per_base_coverage_metrics
+          value: "{{items.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.output_prefix}}_{{inputs.parameters.data-type}}_PerBaseCoverage.txt"
+## flagstat
+  - name: samtools-flagstat
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: data-type # normal or cancer or rna
+      - name: bam-file
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/samtools-cwl:1.0.0
+      command: ['/opt/samtools/bin/samtools']
+      args: ["flagstat", "{{inputs.parameters.bam-file}}", ">", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}.flagstat"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: flagstats
+          value:  "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}.flagstat"
+## select variants
+  - name: select-variants
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: reference
+      - name: vcf-ref
+      - name: target-intervals
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/gatk-cwl:3.6.0
+      command: ['/usr/bin/java']
+      args: ["-Xmx8g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "SelectVariants", "-o", "{{inputs.parameters.output-dir}}/select_variants/selected_variants.vcf.gz", "-R", "{{inputs.parameters.reference}}", "--variant", "{{inputs.parameters.vcf-ref}}", "-L", "{{inputs.parameters.target-intervals}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: filtered_vcf
+          value:  "{{inputs.parameters.output-dir}}/select_variants/selected_variants.vcf.gz"
+## verify bam_id
+  - name: verify-bamid
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: data-type # normal or cancer or rna
+      - name: vcf-ref #select_vars vcf
+      - name: bam-file
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/verify_bam_id-cwl:1.1.3
+      command: ['/usr/local/bin/verifyBamID']
+      args: ["--out", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}.VerifyBamId", "--vcf", "{{inputs.parameters.vcf-ref}}", "--bam", "{{inputs.parameters.bam-file}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: verify_bam_id_metrics
+          value:  "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}.VerifyBamId.selfSM"
+        - name: verify_bam_id_depth
+          value:  "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}.VerifyBamId.depthSM"
+#Concordance
+  - name: concordance
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: cancer-bam
+      - name: normal-bam
+      - name: vcf-ref #somalier_vcf
+      - name: reference
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: brentp/somalier:v0.1.5
+      command: ['/usr/bin/somalier']
+      args: ["-o", "{{inputs.parameters.output-dir}}/final/concordance", "-s", "{{inputs.parameters.vcf-ref}}", "-f", "{{inputs.parameters.reference}}", "{{inputs.parameters.cancer-bam}}", "{{inputs.parameters.normal-bam}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: somalier_pairs
+          value: "{{inputs.parameters.output-dir}}/final/concordance.somalier.pairs.tsv"
+        - name: somalier_samples
+          value: "{{inputs.parameters.output-dir}}/final/concordance.somalier.samples.tsv"

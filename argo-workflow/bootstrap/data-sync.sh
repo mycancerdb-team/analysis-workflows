@@ -13,8 +13,8 @@ aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/cancer-rna/" "${OUTPUTDIR}/samples/canc
 #RNA Folders
 mkdir -p ${OUTPUTDIR}/output/{rna_final,rna_trimmed_read,rna_hisat2_align/aligned_bam,rna_merged_bam,rna_index_bam}
 #Normal Folders
-mkdir -p ${OUTPUTDIR}/output/{normal_final,normal-align}
+mkdir -p ${OUTPUTDIR}/output/{normal_final,normal-align,normal_bwa,normal_dups,normal_namesort,normal_bqsr}
 #Cancer Folders
-mkdir -p ${OUTPUTDIR}/output/{cancer_final,cancer-align}
+mkdir -p ${OUTPUTDIR}/output/{cancer_final,cancer-align,caner_bwa,cancer_dups,cancer_namesort,cancer_bqsr}
 date
 :

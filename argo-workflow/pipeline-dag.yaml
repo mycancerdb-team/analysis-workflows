@@ -34,11 +34,29 @@ spec:
     - name: bqsr-intervals
     - name: known-indels
     - name: dbsnp-vcf
+    - name: bait-intervals
+    - name: target-intervals
+    - name: per-base-intervals
+    - name: per-target-intervals
+    - name: summary-intervals
+    - name: omni-vcf
+    - name: picard-metric-accumulation-level
+    - name: qc_minimum_mapping_quality
+    - name: qc_minimum_base_quality
+    - name: ref-flat
+    - name: ribsomal-ints
+    - name: rna-reference-annotation
+    - name: gene-transcript-lookup-table
+    - name: kallisto-index
+    - name: hisat-index
+    - name: trim-adapter-file
+    - name: somalier-vcf
   onExit: exit-handler
   templates:
   - name: generate-pvc
     inputs:
       parameters:
+      - name: id
       - name: ns
       - name: pvc
       - name: size
@@ -50,7 +68,7 @@ spec:
         apiVersion: v1
         kind: PersistentVolumeClaim
         metadata:
-          name: {{inputs.parameters.pvc}}
+          name: {{inputs.parameters.pvc}}-{{inputs.parameters.id}}
           namespace: {{inputs.parameters.ns}}
         spec:
           accessModes:
@@ -70,7 +88,6 @@ spec:
       parameters:
       - name: pvc-name
       - name: vault-name
-      - name: id
       - name: s3-gen-dir
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -85,8 +102,6 @@ spec:
       env:
       - name: VAULT_ENDPOINT
         value: '{{inputs.parameters.vault-name}}'
-      - name: PATIENT_ID
-        value: '{{inputs.parameters.id}}'
       - name: GENOMIC_PATH
         value: '{{inputs.parameters.s3-gen-dir}}'
   - name: cleanup
@@ -130,6 +145,8 @@ spec:
               value: "{{workflow.parameters.pvc}}"
             - name: size
               value: "{{workflow.parameters.size}}"
+            - name: id
+              value: "{{workflow.parameters.id}}"
       - name: bootstrap-data
         template: get-data
         dependencies: [generate-pvc-data]
@@ -160,8 +177,10 @@ spec:
               value: "20Gi"
             - name: threads
               value: 8
+            - name: data-type
+              value: rna
             - name: trim-adapter-file
-              value: /ref-hg38/psomagen.fa
+              value: "{{workflow.parameters.trim-adapter-file}}"
             - name: trim-adapter-end
               value: 'RIGHT'
             - name: trim-adapter-min-overlap
@@ -191,16 +210,18 @@ spec:
               value: "90Gi"
             - name: threads
               value: 24
+            - name: data-type
+              value: rna
             - name: trimmed_fastq1
               value: "{{tasks.rna-seq-trim-reads.outputs.parameters.trimmed_fastq1}}"
             - name: trimmed_fastq2
               value: "{{tasks.rna-seq-trim-reads.outputs.parameters.trimmed_fastq2}}"
             - name: reference_index
-              value: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/hisat2.1.0_index/GRCh38DH
+              value: "{{workflow.parameters.hisat-index}}"
             - name: read_group_id
               value: 2895626107 #unique-id
             - name: read_group_fields
-              value: "PU:H3MYFBBXX5.4.GCCAAT SM:H_NJ-HCC1395-HCC1395_RNA LB:Pooled_RNA_2891007020-cD1-lib1 PL:Illumina CN:WUGSC" ## coma seperated lista
+              value: "{{workflow.parameters.rna-readGroup}}" ## coma seperated list
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: strand
@@ -218,16 +239,16 @@ spec:
               value: "16"
             - name: "mem"
               value: "64Gi"
-            - name: id
-              value: "{{workflow.parameters.id}}"
             - name: threads
               value: 16
+            - name: data-type
+              value: rna
             - name: trimmed_fastq1
               value: "{{tasks.rna-seq-trim-reads.outputs.parameters.trimmed_fastq1}}"
             - name: trimmed_fastq2
               value: "{{tasks.rna-seq-trim-reads.outputs.parameters.trimmed_fastq2}}"
             - name: kallisto_index
-              value: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/Homo_sapiens.GRCh38.cdna.all.fa.kallisto.idx
+              value: "{{workflow.parameters.kallisto-index}}"
             - name: strand
               value: "{{workflow.parameters.strand}}"
             - name: output-dir
@@ -245,12 +266,12 @@ spec:
               value: "1"
             - name: "mem"
               value: "2Gi"
-            - name: id
-              value: "{{workflow.parameters.id}}"
+            - name: data-type
+              value: rna
             - name: transcript_table_h5
               value: "{{tasks.rna-seq-kallisto.outputs.parameters.expression_transcript_h5}}"
             - name: gene_transcript_lookup_table
-              value: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/ensembl90.transcriptToGene.tsv
+              value: "{{workflow.parameters.gene-transcript-lookup-table}}"
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
       - name: rna-index-bam
@@ -266,10 +287,14 @@ spec:
               value: "10"
             - name: "mem"
               value: "20Gi"
+            - name: data-type
+              value: rna
             - name: id
               value: "{{workflow.parameters.id}}"
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
+            - name: dir-name
+              value: index_bam
             - name: data-type
               value: rna
             - name: bam-file
@@ -287,10 +312,10 @@ spec:
               value: "38"
             - name: "mem"
               value: "50Gi"
-            - name: id
-              value: "{{workflow.parameters.id}}"
             - name: threads
               value: 10
+            - name: data-type
+              value: rna
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: data-type
@@ -312,10 +337,10 @@ spec:
               value: "20"
             - name: "mem"
               value: "50Gi"
-            - name: id
-              value: "{{workflow.parameters.id}}"
             - name: threads
               value: 20
+            - name: data-type
+              value: rna
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: bam-file
@@ -323,7 +348,7 @@ spec:
             - name: strand
               value: "{{workflow.parameters.strand}}"
             - name: reference-annotation
-              value: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/Homo_sapiens.GRCh38DH.90.gtf
+              value: "{{workflow.parameters.rna-reference-annotation}}"
       - name: rna-qc-metrics
         dependencies: [rna-index-bam]
         templateRef:
@@ -337,10 +362,10 @@ spec:
               value: "1"
             - name: "mem"
               value: "20Gi"
-            - name: id
-              value: "{{workflow.parameters.id}}"
             - name: threads
               value: 1
+            - name: data-type
+              value: rna
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: data-type
@@ -350,9 +375,9 @@ spec:
             - name: bam-file
               value: "{{tasks.rna-seq-hisat2-align.outputs.parameters.aligned_bam}}"
             - name: refFlat
-              value: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/Homo_sapiens.GRCh38.90.refFlat.txt
+              value: {{workflow.parameters.ref-flat}}
             - name: ribsomal-ints
-              value: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/Homo_sapiens.GRCh38.90.rRNA.interval_list
+              value: {{workflow.parameters.ribsomal-ints}}
 ##End RNA-Seq Steps
 ##Begin Somatic Steps
 # BWA alignment
@@ -423,7 +448,7 @@ spec:
             - name: "cpu"
               value: "20"
             - name: "mem"
-              value: "32"
+              value: "32Gi"
             - name: threads
               value: 20
             - name: output-dir
@@ -444,7 +469,7 @@ spec:
             - name: "cpu"
               value: "20"
             - name: "mem"
-              value: "32"
+              value: "32Gi"
             - name: threads
               value: 20
             - name: output-dir
@@ -457,7 +482,7 @@ spec:
       - name: normal-exome-mark-dups
         dependencies: [name-sort-normal-exome]
         templateRef:
-          name: immuno-rnaseq-workflow
+          name: immuno-somatic-exome-workflow
           template: mark-dup
         arguments:
           parameters:
@@ -478,11 +503,11 @@ spec:
             - name: bam-file
               value: "{{tasks.name-sort-normal-exome.outputs.parameters.name_sorted_bam}}"
             - name: input-sort-order
-              value: "{{workflow.parameters.input-sort-order}}"
+              value: "queryname"
       - name: cancer-exome-mark-dups
         dependencies: [name-sort-cancer-exome]
         templateRef:
-          name: immuno-rnaseq-workflow
+          name: immuno-somatic-exome-workflow
           template: mark-dup
         arguments:
           parameters:
@@ -503,7 +528,7 @@ spec:
             - name: bam-file
               value: "{{tasks.name-sort-cancer-exome.outputs.parameters.name_sorted_bam}}"
             - name: input-sort-order
-              value: "{{workflow.parameters.input-sort-order}}"
+              value: "queryname"
 ####bqsr
       - name: normal-exome-bqsr
         dependencies: [normal-exome-mark-dups]
@@ -580,7 +605,7 @@ spec:
             - name: data-type
               value: normal
             - name: bam-file
-              value: "{{tasks.normal-exome-mark-dups.outputs.parameters.marksorted_bam}}"
+              value: "{{tasks.normal-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
             - name: reference
               value: "{{workflow.parameters.genome-reference}}"
             - name: bqsr-table
@@ -630,6 +655,8 @@ spec:
               value: "{{workflow.parameters.output-dir}}"
             - name: data-type
               value: normal
+            - name: dir-name
+              value: final
             - name: bam-file
               value: "{{tasks.normal-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
       - name: cancer-index-bam
@@ -651,9 +678,531 @@ spec:
               value: "{{workflow.parameters.output-dir}}"
             - name: data-type
               value: cancer
+            - name: dir-name
+              value: final
             - name: bam-file
               value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
-#### Need to clean the output dir from the mark_dups sorted_bam and bai files
-#### simple container to mv them perhaps sidecar ?
 #### QC_Exome
+      - name: normal-collect_insert_size_metrics
+        dependencies: [normal-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: insert-size-metrics
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: normal
+            - name: bam-file
+              value: "{{tasks.normal-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: metric-accumulation-level
+              value: "{{workflow.parameters.picard-metric-accumulation-level}}"
+      - name: cancer-collect_insert_size_metrics
+        dependencies: [cancer-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: insert-size-metrics
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: cancer
+            - name: bam-file
+              value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: metric-accumulation-level
+              value: "{{workflow.parameters.picard-metric-accumulation-level}}"
+      - name: normal-collect_alignment_summary_metrics
+        dependencies: [normal-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: align-summary-metrics
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: normal
+            - name: bam-file
+              value: "{{tasks.normal-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: metric-accumulation-level
+              value: "{{workflow.parameters.picard-metric-accumulation-level}}"
+      - name: cancer-collect_alignment_summary_metrics
+        dependencies: [cancer-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: align-summary-metrics
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: cancer
+            - name: bam-file
+              value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: metric-accumulation-level
+              value: "{{workflow.parameters.picard-metric-accumulation-level}}"
+###HSMetrics roi
+      - name: normal-collect_roi_hs_metrics
+        dependencies: [normal-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: collect-hs-metrics
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: normal
+            - name: bam-file
+              value: "{{tasks.normal-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: metric-accumulation-level
+              value: "{{workflow.parameters.picard-metric-accumulation-level}}"
+            - name: bait-intervals
+              value: "{{workflow.parameters.bait-intervals}}"
+            - name: target-intervals
+              value: "{{workflow.parameters.target-intervals}}"
+            - name: per_target_coverage
+              value: false
+            - name: per_base_coverage
+              value: false
+            - name: output_prefix
+              value: "roi"
+            - name: minimum_mapping_quality
+              value: "{{workflow.parameters.qc_minimum_mapping_quality}}"
+            - name: minimum_base_quality
+              value: "{{workflow.parameters.qc_minimum_base_quality}}"
+      - name: cancer-collect_roi_hs_metrics
+        dependencies: [cancer-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: collect-hs-metrics
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: cancer
+            - name: bam-file
+              value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: metric-accumulation-level
+              value: "{{workflow.parameters.picard-metric-accumulation-level}}"
+            - name: bait-intervals
+              value: "{{workflow.parameters.bait-intervals}}"
+            - name: target-intervals
+              value: "{{workflow.parameters.target-intervals}}"
+            - name: per_target_coverage
+              value: false
+            - name: per_base_coverage
+              value: false
+            - name: output_prefix
+              value: "roi"
+            - name: minimum_mapping_quality
+              value: "{{workflow.parameters.qc_minimum_mapping_quality}}"
+            - name: minimum_base_quality
+              value: "{{workflow.parameters.qc_minimum_base_quality}}"
+##DetailedHSMetrics
+      - name: normal-collect_summary_hs_metrics
+        dependencies: [normal-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: collect-hs-metrics
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: normal
+            - name: bam-file
+              value: "{{tasks.normal-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: metric-accumulation-level
+              value: "{{workflow.parameters.picard-metric-accumulation-level}}"
+            - name: bait-intervals
+              value: "{{workflow.parameters.bait-intervals}}"
+            - name: target-intervals
+              value: "{{workflow.parameters.target-intervals}}"
+            - name: per_target_coverage
+              value: false
+            - name: per_base_coverage
+              value: false
+            - name: output_prefix
+              value: "summary"
+            - name: minimum_mapping_quality
+              value: "{{workflow.parameters.qc_minimum_mapping_quality}}"
+            - name: minimum_base_quality
+              value: "{{workflow.parameters.qc_minimum_base_quality}}"
+      - name: cancer-collect_summary_hs_metrics
+        dependencies: [cancer-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: collect-hs-metrics
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: cancer
+            - name: bam-file
+              value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: metric-accumulation-level
+              value: "{{workflow.parameters.picard-metric-accumulation-level}}"
+            - name: bait-intervals
+              value: "{{workflow.parameters.bait-intervals}}"
+            - name: target-intervals
+              value: "{{workflow.parameters.target-intervals}}"
+            - name: per_target_coverage
+              value: false
+            - name: per_base_coverage
+              value: false
+            - name: output_prefix
+              value: "summary"
+            - name: minimum_mapping_quality
+              value: "{{workflow.parameters.qc_minimum_mapping_quality}}"
+            - name: minimum_base_quality
+              value: "{{workflow.parameters.qc_minimum_base_quality}}"
+## PerBase Metrics
+      - name: normal-collect_base_hs_metrics
+        dependencies: [normal-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: collect-hs-metrics
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: normal
+            - name: bam-file
+              value: "{{tasks.normal-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: metric-accumulation-level
+              value: "{{workflow.parameters.picard-metric-accumulation-level}}"
+            - name: bait-intervals
+              value: "{{workflow.parameters.bait-intervals}}"
+            - name: target-intervals
+              value: "{{workflow.parameters.target-intervals}}"
+            - name: per_target_coverage
+              value: false
+            - name: per_base_coverage
+              value: true
+            - name: output_prefix
+              value: "base"
+            - name: minimum_mapping_quality
+              value: "{{workflow.parameters.qc_minimum_mapping_quality}}"
+            - name: minimum_base_quality
+              value: "{{workflow.parameters.qc_minimum_base_quality}}"
+      - name: cancer-collect_base_hs_metrics
+        dependencies: [cancer-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: collect-hs-metrics
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: cancer
+            - name: bam-file
+              value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: metric-accumulation-level
+              value: "{{workflow.parameters.picard-metric-accumulation-level}}"
+            - name: bait-intervals
+              value: "{{workflow.parameters.bait-intervals}}"
+            - name: target-intervals
+              value: "{{workflow.parameters.target-intervals}}"
+            - name: per_target_coverage
+              value: false
+            - name: per_base_coverage
+              value: true
+            - name: output_prefix
+              value: "base"
+            - name: minimum_mapping_quality
+              value: "{{workflow.parameters.qc_minimum_mapping_quality}}"
+            - name: minimum_base_quality
+              value: "{{workflow.parameters.qc_minimum_base_quality}}"
+## Per Target Metrics
+      - name: normal-collect_target_hs_metrics
+        dependencies: [normal-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: collect-hs-metrics
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: normal
+            - name: bam-file
+              value: "{{tasks.normal-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: metric-accumulation-level
+              value: "{{workflow.parameters.picard-metric-accumulation-level}}"
+            - name: bait-intervals
+              value: "{{workflow.parameters.bait-intervals}}"
+            - name: target-intervals
+              value: "{{workflow.parameters.target-intervals}}"
+            - name: per_target_coverage
+              value: true
+            - name: per_base_coverage
+              value: false
+            - name: output_prefix
+              value: "target"
+            - name: minimum_mapping_quality
+              value: "{{workflow.parameters.qc_minimum_mapping_quality}}"
+            - name: minimum_base_quality
+              value: "{{workflow.parameters.qc_minimum_base_quality}}"
+      - name: cancer-collect_target_hs_metrics
+        dependencies: [cancer-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: collect-hs-metrics
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: cancer
+            - name: bam-file
+              value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: metric-accumulation-level
+              value: "{{workflow.parameters.picard-metric-accumulation-level}}"
+            - name: bait-intervals
+              value: "{{workflow.parameters.bait-intervals}}"
+            - name: target-intervals
+              value: "{{workflow.parameters.target-intervals}}"
+            - name: per_target_coverage
+              value: true
+            - name: per_base_coverage
+              value: false
+            - name: output_prefix
+              value: "target"
+            - name: minimum_mapping_quality
+              value: "{{workflow.parameters.qc_minimum_mapping_quality}}"
+            - name: minimum_base_quality
+              value: "{{workflow.parameters.qc_minimum_base_quality}}"
+#samtools flagstat
+      - name: normal-samtools-flagstat
+        dependencies: [normal-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: samtools-flagstat
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: normal
+            - name: bam-file
+              value: "{{tasks.normal-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+      - name: cancer-samtools-flagstat
+        dependencies: [cancer-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: samtools-flagstat
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: cancer
+            - name: bam-file
+              value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+#select_vars
+      - name: select-variants
+        dependencies: [bootstrap-data]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: select-variants
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: normal
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: vcf-ref
+              value: "{{workflow.parameters.omni-vcf}}"
+            - name: target-intervals
+              value: "{{workflow.parameters.target-intervals}}"
+#verify_bam
+      - name: normal-verify-bam
+        dependencies: [select-variants,normal-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: verify-bamid
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: normal
+            - name: bam-file
+              value: "{{tasks.normal-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: vcf-ref
+              value: "{{tasks.select-variants.outputs.parameters.filtered_vcf}}"
+      - name: cancer-verify-bam
+        dependencies: [select-variants,cancer-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: verify-bamid
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: cancer
+            - name: bam-file
+              value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: vcf-ref
+              value: "{{tasks.select-variants.outputs.parameters.filtered_vcf}}"
 ####Concordance
+      - name: concordance
+        dependencies: [cancer-index-bam,normal-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: concordance
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: cancer-bam
+              value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: normal-bam
+              value: "{{tasks.normal-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: vcf-ref
+              value: "{{workflow.parameters.somalier-vcf}}"
+##DetectVariants
