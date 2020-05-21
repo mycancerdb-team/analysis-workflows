@@ -344,7 +344,7 @@ steps:
             [indexed_vcf]
     filter_vcf:
         run: ../subworkflows/filter_vcf.cwl
-        in: 
+        in:
             vcf: index/indexed_vcf
             filter_gnomADe_maximum_population_allele_frequency: filter_gnomADe_maximum_population_allele_frequency
             filter_mapq0_threshold: filter_mapq0_threshold
@@ -369,7 +369,7 @@ steps:
                     return('gnomAD_AF');
                 }
             known_variants: known_variants
-        out: 
+        out:
             [filtered_vcf]
     annotated_filter_bgzip:
         run: ../tools/bgzip.cwl

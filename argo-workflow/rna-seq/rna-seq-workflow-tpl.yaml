@@ -35,7 +35,7 @@ spec:
     container:
       image: mgibio/bisulfite:v1.4
       command: ['/opt/flexbar/flexbar']
-      args: ["--adapter-min-overlap", "{{inputs.parameters.trim-adapter-min-overlap}}", "--adapter-trim-end", "{{inputs.parameters.trim-adapter-end}}", "--adapters", "{{inputs.parameters.trim-adapter-file}}", "--max-uncalled", "{{inputs.parameters.trim-max_uncalled}}", "--min-read-length", "{{inputs.parameters.trim-min-readlength}}", "--threads", "{{inputs.parameters.threads}}", "--reads", "{{inputs.parameters.rna-fastq-r1}}", "--reads2", "{{inputs.parameters.rna-fastq-r2}}", "--target", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_trimmed_read", "--stdout-log"]
+      args: ["--adapter-min-overlap", "{{inputs.parameters.trim-adapter-min-overlap}}", "--adapter-trim-end", "{{inputs.parameters.trim-adapter-end}}", "--adapters", "{{inputs.parameters.trim-adapter-file}}", "--max-uncalled", "{{inputs.parameters.trim-max_uncalled}}", "--min-read-length", "{{inputs.parameters.trim-min-readlength}}", "--threads", "{{inputs.parameters.threads}}", "--reads", "{{inputs.parameters.rna-fastq-r1}}", "--reads2", "{{inputs.parameters.rna-fastq-r2}}", "--target", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_trimmed_read/trimmed_read", "--stdout-log"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'

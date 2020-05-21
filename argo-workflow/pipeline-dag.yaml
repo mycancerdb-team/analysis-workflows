@@ -295,8 +295,6 @@ spec:
               value: "{{workflow.parameters.output-dir}}"
             - name: dir-name
               value: index_bam
-            - name: data-type
-              value: rna
             - name: bam-file
               value: "{{tasks.rna-seq-hisat2-align.outputs.parameters.aligned_bam}}"
       - name: rna-mark-duplicates
@@ -318,8 +316,6 @@ spec:
               value: rna
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
-            - name: data-type
-              value: rna
             - name: bam-file
               value: "{{tasks.rna-seq-hisat2-align.outputs.parameters.aligned_bam}}"
             - name: input-sort-order
@@ -368,16 +364,14 @@ spec:
               value: rna
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
-            - name: data-type
-              value: rna
             - name: strand
               value: "{{workflow.parameters.strand}}"
             - name: bam-file
               value: "{{tasks.rna-seq-hisat2-align.outputs.parameters.aligned_bam}}"
             - name: refFlat
-              value: {{workflow.parameters.ref-flat}}
+              value: "{{workflow.parameters.ref-flat}}"
             - name: ribsomal-ints
-              value: {{workflow.parameters.ribsomal-ints}}
+              value: "{{workflow.parameters.ribsomal-ints}}"
 ##End RNA-Seq Steps
 ##Begin Somatic Steps
 # BWA alignment
@@ -605,7 +599,7 @@ spec:
             - name: data-type
               value: normal
             - name: bam-file
-              value: "{{tasks.normal-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+              value: "{{tasks.normal-exome-mark-dups.outputs.parameters.marksorted_bam}}"
             - name: reference
               value: "{{workflow.parameters.genome-reference}}"
             - name: bqsr-table
@@ -683,7 +677,7 @@ spec:
             - name: bam-file
               value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
 #### QC_Exome
-      - name: normal-collect_insert_size_metrics
+      - name: normal-collect-insert-size-metrics
         dependencies: [normal-index-bam]
         templateRef:
           name: immuno-somatic-exome-workflow
@@ -706,7 +700,7 @@ spec:
               value: "{{workflow.parameters.genome-reference}}"
             - name: metric-accumulation-level
               value: "{{workflow.parameters.picard-metric-accumulation-level}}"
-      - name: cancer-collect_insert_size_metrics
+      - name: cancer-collect-insert-size-metrics
         dependencies: [cancer-index-bam]
         templateRef:
           name: immuno-somatic-exome-workflow
@@ -729,7 +723,7 @@ spec:
               value: "{{workflow.parameters.genome-reference}}"
             - name: metric-accumulation-level
               value: "{{workflow.parameters.picard-metric-accumulation-level}}"
-      - name: normal-collect_alignment_summary_metrics
+      - name: normal-collect-alignment-summary-metrics
         dependencies: [normal-index-bam]
         templateRef:
           name: immuno-somatic-exome-workflow
@@ -752,7 +746,7 @@ spec:
               value: "{{workflow.parameters.genome-reference}}"
             - name: metric-accumulation-level
               value: "{{workflow.parameters.picard-metric-accumulation-level}}"
-      - name: cancer-collect_alignment_summary_metrics
+      - name: cancer-collect-alignment-summary-metrics
         dependencies: [cancer-index-bam]
         templateRef:
           name: immuno-somatic-exome-workflow
@@ -776,7 +770,7 @@ spec:
             - name: metric-accumulation-level
               value: "{{workflow.parameters.picard-metric-accumulation-level}}"
 ###HSMetrics roi
-      - name: normal-collect_roi_hs_metrics
+      - name: normal-collect-roi-hs-metrics
         dependencies: [normal-index-bam]
         templateRef:
           name: immuno-somatic-exome-workflow
@@ -813,7 +807,7 @@ spec:
               value: "{{workflow.parameters.qc_minimum_mapping_quality}}"
             - name: minimum_base_quality
               value: "{{workflow.parameters.qc_minimum_base_quality}}"
-      - name: cancer-collect_roi_hs_metrics
+      - name: cancer-collect-roi-hs-metrics
         dependencies: [cancer-index-bam]
         templateRef:
           name: immuno-somatic-exome-workflow
@@ -851,7 +845,7 @@ spec:
             - name: minimum_base_quality
               value: "{{workflow.parameters.qc_minimum_base_quality}}"
 ##DetailedHSMetrics
-      - name: normal-collect_summary_hs_metrics
+      - name: normal-collect-summary-hs-metrics
         dependencies: [normal-index-bam]
         templateRef:
           name: immuno-somatic-exome-workflow
@@ -888,7 +882,7 @@ spec:
               value: "{{workflow.parameters.qc_minimum_mapping_quality}}"
             - name: minimum_base_quality
               value: "{{workflow.parameters.qc_minimum_base_quality}}"
-      - name: cancer-collect_summary_hs_metrics
+      - name: cancer-collect-summary-hs-metrics
         dependencies: [cancer-index-bam]
         templateRef:
           name: immuno-somatic-exome-workflow
@@ -926,7 +920,7 @@ spec:
             - name: minimum_base_quality
               value: "{{workflow.parameters.qc_minimum_base_quality}}"
 ## PerBase Metrics
-      - name: normal-collect_base_hs_metrics
+      - name: normal-collect-base-hs-metrics
         dependencies: [normal-index-bam]
         templateRef:
           name: immuno-somatic-exome-workflow
@@ -963,7 +957,7 @@ spec:
               value: "{{workflow.parameters.qc_minimum_mapping_quality}}"
             - name: minimum_base_quality
               value: "{{workflow.parameters.qc_minimum_base_quality}}"
-      - name: cancer-collect_base_hs_metrics
+      - name: cancer-collect-base-hs-metrics
         dependencies: [cancer-index-bam]
         templateRef:
           name: immuno-somatic-exome-workflow
@@ -1001,7 +995,7 @@ spec:
             - name: minimum_base_quality
               value: "{{workflow.parameters.qc_minimum_base_quality}}"
 ## Per Target Metrics
-      - name: normal-collect_target_hs_metrics
+      - name: normal-collect-target-hs-metrics
         dependencies: [normal-index-bam]
         templateRef:
           name: immuno-somatic-exome-workflow
@@ -1038,7 +1032,7 @@ spec:
               value: "{{workflow.parameters.qc_minimum_mapping_quality}}"
             - name: minimum_base_quality
               value: "{{workflow.parameters.qc_minimum_base_quality}}"
-      - name: cancer-collect_target_hs_metrics
+      - name: cancer-collect-target-hs-metrics
         dependencies: [cancer-index-bam]
         templateRef:
           name: immuno-somatic-exome-workflow

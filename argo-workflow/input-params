@@ -1,4 +1,4 @@
-id: 000
+id: 0
 ns: argo
 pvc: immuno-data-pvc
 size: 2000Gi

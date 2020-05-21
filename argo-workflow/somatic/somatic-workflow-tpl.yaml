@@ -226,7 +226,7 @@ spec:
     container:
       image: mgibio/picard-cwl:2.18.1
       command: ['/usr/bin/java']
-      args: ["-Xmx24g", "-jar", "/usr/picard/picard.jar", "CollectAlignmentSummaryMetrics", "OUTPUT=", "{{items.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}_AlignmentSummaryMetrics.txt", "INPUT=", "{{inputs.parameters.bam-file}}", "REFERENCE_SEQUENCE=", "{{inputs.parameters.reference}}", "METRIC_ACCUMULATION_LEVEL=", "{{inputs.parameters.metric-accumulation-level}}"]
+      args: ["-Xmx24g", "-jar", "/usr/picard/picard.jar", "CollectAlignmentSummaryMetrics", "OUTPUT=", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}_AlignmentSummaryMetrics.txt", "INPUT=", "{{inputs.parameters.bam-file}}", "REFERENCE_SEQUENCE=", "{{inputs.parameters.reference}}", "METRIC_ACCUMULATION_LEVEL=", "{{inputs.parameters.metric-accumulation-level}}"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -321,7 +321,7 @@ spec:
     container:
       image: mgibio/samtools-cwl:1.0.0
       command: ['/opt/samtools/bin/samtools']
-      args: ["flagstat", "{{inputs.parameters.bam-file}}", ">", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}.flagstat"]
+      args: ["flagstat {{inputs.parameters.bam-file}};", ">", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}.flagstat"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'

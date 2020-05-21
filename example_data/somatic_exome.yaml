@@ -52,7 +52,7 @@ per_target_intervals:
       class: File
       path: exome_workflow/chr17_test_target.interval_list
 summary_intervals:
-  - label: baits 
+  - label: baits
     file:
       class: File
       path: exome_workflow/chr17_test_bait.interval_list
@@ -97,5 +97,5 @@ interval_list:
 mutect_scatter_count: 2
 mutect_artifact_detection_mode: false
 somalier_vcf:
-  class: File 
+  class: File
   path: exome_workflow/chr17_vcf_file_for_somalier.vcf

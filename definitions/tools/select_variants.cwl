@@ -54,7 +54,7 @@ inputs:
         inputBinding:
             prefix: "-selectType"
             position: 6
-        doc: 'select only a certain type of variants' 
+        doc: 'select only a certain type of variants'
 outputs:
     filtered_vcf:
         type: File
