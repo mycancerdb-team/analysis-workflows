@@ -53,4 +53,3 @@ outputs:
         type: File
         outputBinding:
             glob: $(inputs.output_vcf_basename).vcf
-

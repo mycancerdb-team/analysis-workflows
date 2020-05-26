@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
-  name: immuno-somatic-exome-workflow
+  name: immuno-somatic-exome-detect-vars
 spec:
   volumes:
     - name: pvc-reference
@@ -11,3 +11,209 @@ spec:
     - name: mgbio-cred
     - name: mcdb-bot
   templates:
+  - name: split-interval-list
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: "cpu"
+      - name: "mem"
+      - name: threads
+      - name: interval-list #mutect-interval-list
+      - name: scatter-count #5
+      - name: service #mutect
+      - name: output-dir
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/split-ints:v1.3.1
+      command: ['/usr/bin/perl']
+      args: ["/root/split_interval_list_helper.pl", "OUTPUT=", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/split-ints", "INPUT=", "{{inputs.parameters.interval-list}}", "SCATTER_COUNT=", "{{inputs.parameters.scatter-count}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: split_interval_lists
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/split-ints"
+#BEGIN MUTECT BLOCK
+  - name: mutect-workflow
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: threads
+      - name: scatter-count
+      - name: id
+      - name: reference
+      - name: cancer-bam
+      - name: normal-bam
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/mutect2:4.1.2.0
+      env:
+      - name: REFGENOME
+        value: "{{inputs.parameters.reference}}"
+      - name: CANCERBAM
+        value: "{{inputs.parameters.cancer-bam}}"
+      - name: NORMALBAM
+        value: "{{inputs.parameters.normal-bam}}"
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      - name: ID
+        value: "{{inputs.parameters.id}}"
+      - name: PARALLEL
+        value: "{{inputs.parameters.scatter-count}}"
+      command: ["/bin/bash"]
+      args: ["/root/mutect2.sh"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+  - name: mutect-merge
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: threads
+      - name: id
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/mutect-merge:1.3.1
+      env:
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      - name: ID
+        value: "{{inputs.parameters.id}}"
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: mutect-merged-vcf
+          value: "{{inputs.parameters.output-dir}}/mutect/{{inputs.parameters.id}}.vcf.gz"
+##END MUTEC BLOCK
+  - name: index-vcf
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: threads
+      - name: id
+      - name: service #mutect #skrelka #others
+      - name: vcf
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/index-vcf:1.0.0
+      env:
+      - name: VCF
+        value: "{{inputs.parameters.vcf}}"
+      - name: OUTPUT
+        value: "{{inputs.parameters.output-dir}}"
+      - name: SERVICE
+        value: "{{inputs.parameters.service}}"
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: vcf-index
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.id}}.tbi"
+  - name: fp-filter
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: threads
+      - name: reference
+      - name: cancer-bam
+      - name: vcf
+      - name: service
+      - name: id
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/fp_filter-cwl:1.0.1
+      command: ['/usr/bin/perl']
+      args: ["/usr/bin/fpfilter.pl", "--bam-readcount", "/usr/bin/bam-readcount", "--samtools", "/opt/samtools/bin/samtools", "--output", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/fpfilter_{{inputs.parameters.id}}.vcf", "--reference", "{{inputs.parameters.reference}}", "--bam-file", "{{inputs.parameters.cancer-bam}}", "--vcf-file", "{{inputs.parameters.vcf}}", "--sample", "TUMOR", "--min-var-freq", "0.05"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: unfiltered_vcf
+          value: "{{inputs.parameters.vcf}}"
+        - name: filtered_vcf
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/fpfilter_{{inputs.parameters.id}}.vcf"
+  #- name: ###
+  #  inputs:
+  #    parameters:
+  #    - name: pvc-name
+  #    - name: output-dir
+  #    - name: "cpu"
+  #    - name: "mem"
+  #    - name: threads
+  #    - name: ###
+  #    - name: ###
+  #    - name: ###
+  #  podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+  #  volumes:
+  #    - name: '{{inputs.parameters.pvc-name}}'
+  #      persistentVolumeClaim:
+  #        claimName: '{{inputs.parameters.pvc-name}}'
+  #  container:
+  #    image: ##### docker.cancerdb.io/mgbio-workflow/
+  #    env:
+  #    - name: ###
+  #      value: ###
+  #    command: ['###']
+  #    args: ["###"]
+  #    imagePullPolicy: Always
+  #    volumeMounts:
+  #    - name: '{{inputs.parameters.pvc-name}}'
+  #      mountPath: /data
+  #    - name: pvc-reference
+  #      mountPath: /ref-hg38
+  #  outputs:
+  #    parameters:
+  #      - name: ###
+  #        value: ###
