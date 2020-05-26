@@ -38,3 +38,4 @@ hisat-index: /ref-hg38/GRC-human-build38_human_90_38/rna_seq_annotation/hisat2.1
 trim-adapter-file: /ref-hg38/psomagen.fa
 somalier-vcf: /ref-hg38/known_variants/somalier_GRCh38.vcf.gz
 mutect-interval-list: /ref-hg38/somatic_inputs/hla_and_brca_genes.interval_list
+scatter-count: 5

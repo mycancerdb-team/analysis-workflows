@@ -17,7 +17,6 @@ spec:
       - name: pvc-name
       - name: "cpu"
       - name: "mem"
-      - name: threads
       - name: interval-list #mutect-interval-list
       - name: scatter-count #5
       - name: service #mutect
@@ -49,7 +48,6 @@ spec:
       - name: output-dir
       - name: "cpu"
       - name: "mem"
-      - name: threads
       - name: scatter-count
       - name: id
       - name: reference
@@ -90,7 +88,6 @@ spec:
       - name: output-dir
       - name: "cpu"
       - name: "mem"
-      - name: threads
       - name: id
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
@@ -122,7 +119,6 @@ spec:
       - name: output-dir
       - name: "cpu"
       - name: "mem"
-      - name: threads
       - name: id
       - name: service #mutect #skrelka #others
       - name: vcf
@@ -157,7 +153,6 @@ spec:
       - name: output-dir
       - name: "cpu"
       - name: "mem"
-      - name: threads
       - name: reference
       - name: cancer-bam
       - name: vcf

@@ -1200,5 +1200,130 @@ spec:
             - name: vcf-ref
               value: "{{workflow.parameters.somalier-vcf}}"
 ##DetectVariants
-#dependencies: [normal-index-bam]
-#dependencies: [cancer-index-bam]
+#dependencies: [normal-index-bam,cancer-index-bam]
+##MUTECT BLOCK
+      - name: mutect-split-interval-list
+        dependencies: [normal-index-bam,cancer-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: split-interval-list
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: interval-list
+              value: "{{workflow.parameters.mutect-interval-list}}"
+            - name: scatter-count
+              value: "{{workflow.parameters.scatter-count}}"
+            - name: service
+              value: "mutect"
+      - name: mutect-workflow
+        dependencies: [mutect-split-interval-list]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: mutect-workflow
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: scatter-count
+              value: "{{workflow.parameters.scatter-count}}"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: cancer-bam
+              value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: normal-bam
+              value: "{{tasks.normal-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+      - name: mutect-merge
+        dependencies: [mutect-workflow]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: mutect-merge
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+      - name: mutect-index-vcf
+        dependencies: [mutect-merge]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: service
+              value: "mutect"
+            - name: vcf
+              value: "{{tasks.mutect-merge.outputs.parameters.mutect-merged-vcf}}"
+      - name: mutect-fp-filter
+        dependencies: [mutect-index-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: fp-filter
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: service
+              value: "mutect"
+            - name: vcf
+              value: "{{tasks.mutect-merge.outputs.parameters.mutect-merged-vcf}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: cancer-bam
+              value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+## END MUTECT BLOCK
+#      - name: ####
+#        dependencies: [#####]
+#        templateRef:
+#          name: immuno-somatic-exome-detect-vars
+#          template: #####
+#        arguments:
+#          parameters:
+#            - name: pvc-name
+#              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+#            - name: "cpu"
+#              value: "12"
+#            - name: "mem"
+#              value: "32Gi"
+#            - name: output-dir
+#              value: "{{workflow.parameters.output-dir}}"
