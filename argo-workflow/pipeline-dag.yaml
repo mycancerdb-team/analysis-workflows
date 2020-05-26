@@ -114,14 +114,14 @@ spec:
       - name: id
         value: "{{workflow.parameters.id}}"
     volumes:
-      - name: '{{inputs.parameters.pvc}}'
+      - name: "{{inputs.parameters.pvc}}-{{inputs.parameters.id}}"
         persistentVolumeClaim:
-          claimName: '{{inputs.parameters.pvc}}'
+          claimName: "{{inputs.parameters.pvc}}-{{inputs.parameters.id}}"
     container:
       image: docker.cancerdb.io/mcdb-bots/wrkflw-cleanup:mgbio
       imagePullPolicy: Always
       volumeMounts:
-      - name: '{{inputs.parameters.pvc}}'
+      - name: "{{inputs.parameters.pvc}}-{{inputs.parameters.id}}"
         mountPath: /data
       env:
       - name: VAULT_ENDPOINT
@@ -1200,3 +1200,5 @@ spec:
             - name: vcf-ref
               value: "{{workflow.parameters.somalier-vcf}}"
 ##DetectVariants
+#dependencies: [normal-index-bam]
+#dependencies: [cancer-index-bam]
