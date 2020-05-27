@@ -14,29 +14,31 @@
 #MINMPQL "{{inputs.parameters.minimum_mapping_quality}}"
 #MINBSQL "{{inputs.parameters.minimum_base_quality}}"
 
-set -e
+set -o pipefail
+set -o errexit
+set -o nounset
 
-if [ $PERTRGTCVRG == 'false' && $PERBSECVRG == 'false' ];
+if [ $PERTRGTCVRG = "false" ] && [ $PERBSECVRG = "false" ];
 then
   #1
   echo -n "Running the HS_Metrics Pipeline for $DATATYPE Exome data with no per target or base coverage calculations ...  "
   /usr/bin/java -Xmx48g -jar /usr/picard/picard.jar CollectHsMetrics O=$OUTPUTDIR/${DATATYPE}_final/${OUTPTPRFX}_${DATATYPE}_HsMetrics.txt I=$BAMFILE R=$REFGENOME \
   METRIC_ACCUMULATION_LEVEL=$METRICACCUMLVL BAIT_INTERVALS=$BAITINTV TARGET_INTERVALS=$TRGTINTV  MINIMUM_MAPPING_QUALITY=$MINMPQL MINIMUM_BASE_QUALITY=$MINBSQL
-elif [ $PERTRGTCVRG == 'true' && $PERBSECVRG == 'false' ];
+elif [ $PERTRGTCVRG = "true" ] && [ $PERBSECVRG = "false" ];
 then
   #2
   echo -n "Running the HS_Metrics Pipeline for $DATATYPE Exome data with per target coverage calculations ...  "
   /usr/bin/java -Xmx48g -jar /usr/picard/picard.jar CollectHsMetrics O=$OUTPUTDIR/${DATATYPE}_final/${OUTPTPRFX}_${DATATYPE}_HsMetrics.txt I=$BAMFILE R=$REFGENOME \
   METRIC_ACCUMULATION_LEVEL=$METRICACCUMLVL BAIT_INTERVALS=$BAITINTV TARGET_INTERVALS=$TRGTINTV  MINIMUM_MAPPING_QUALITY=$MINMPQL MINIMUM_BASE_QUALITY=$MINBSQL \
   PER_TARGET_COVERAGE=${OUTPTPRFX}_${DATATYPE}_PerTargetCoverage.txt
-elif [ $PERTRGTCVRG == 'false' && $PERBSECVRG == 'true' ];
+elif [ $PERTRGTCVRG = "false" ] && [ $PERBSECVRG = "true" ];
 then
   #3
   echo -n "Running the HS_Metrics Pipeline for $DATATYPE Exome data with base coverage calculations ...  "
   /usr/bin/java -Xmx48g -jar /usr/picard/picard.jar CollectHsMetrics O=$OUTPUTDIR/${DATATYPE}_final/${OUTPTPRFX}_${DATATYPE}_HsMetrics.txt I=$BAMFILE R=$REFGENOME \
   METRIC_ACCUMULATION_LEVEL=$METRICACCUMLVL BAIT_INTERVALS=$BAITINTV TARGET_INTERVALS=$TRGTINTV  MINIMUM_MAPPING_QUALITY=$MINMPQL MINIMUM_BASE_QUALITY=$MINBSQL \
   PER_BASE_COVERAGE=${OUTPTPRFX}_${DATATYPE}_PerBaseCoverage.txt
-elif [ $PERTRGTCVRG == 'true' && $PERBSECVRG == 'true' ];
+elif [ $PERTRGTCVRG = "true" ] && [ $PERBSECVRG = "true" ];
 then
   #4
   echo -n "Running the HS_Metrics Pipeline for $DATATYPE Exome data with both per target and base coverage calculations ...  "

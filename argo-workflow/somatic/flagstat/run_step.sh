@@ -8,4 +8,4 @@
 set -o pipefail
 set -o errexit
 
-/opt/samtools/bin/samtools flagstat $BAM > "$OUTPUDIR/${DATATYPE}_final/$DATATYPE.flagstat"
+/opt/samtools/bin/samtools flagstat $BAM > "$OUTPUTDIR/${DATATYPE}_final/$DATATYPE.flagstat"
