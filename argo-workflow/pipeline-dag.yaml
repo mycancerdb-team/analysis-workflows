@@ -1124,8 +1124,10 @@ spec:
               value: "32Gi"
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
-            - name: data-type
-              value: normal
+            - name: service
+              value: "select_variants"
+            - name: filename
+              value: "selected_variants"
             - name: reference
               value: "{{workflow.parameters.genome-reference}}"
             - name: vcf-ref
@@ -1280,10 +1282,10 @@ spec:
               value: "32Gi"
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
-            - name: id
-              value: "{{workflow.parameters.id}}"
             - name: service
               value: "mutect"
+            - name: data-type
+              value: null
             - name: vcf
               value: "{{tasks.mutect-merge.outputs.parameters.mutect-merged-vcf}}"
       - name: mutect-fp-filter
@@ -1312,8 +1314,283 @@ spec:
             - name: cancer-bam
               value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
 ## END MUTECT BLOCK
+## BEGIN STRELKA BLOCK
+      - name: strelka-workflow
+        dependencies: [normal-index-bam,cancer-index-bam]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: strelka-run
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: threads
+              value: 8
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: cancer-bam
+              value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: normal-bam
+              value: "{{tasks.normal-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+      - name: strelka-add-gt-snvs
+        dependencies: [strelka-workflow]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: strelka-add-gt
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{{tasks.strelka-workflow.outputs.parameters.snvs}}"
+            - name: data-type
+              value: snv
+      - name: strelka-add-gt-indels
+        dependencies: [strelka-workflow]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: strelka-add-gt
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{{tasks.strelka-workflow.outputs.parameters.indels}}"
+            - name: data-type
+              value: indels
+      - name: bgzip-strelka-gt-snvs
+        dependencies: [strelka-add-gt-snvs]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: bgzip
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: input-file
+              value: "{{tasks.strelka-add-gt-snvs.outputs.parameters.gt_vcf}}"
+      - name: bgzip-strelka-gt-indels
+        dependencies: [strelka-add-gt-indels]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: bgzip
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: input-file
+              value: "{{tasks.strelka-add-gt-indels.outputs.parameters.gt_vcf}}"
+      - name: index-strelka-snvs
+        dependencies: [bgzip-strelka-gt-snvs]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "strelka"
+            - name: data-type
+              value: snv
+            - name: vcf
+              value: "{{tasks.bgzip-strelka-gt-snvs.outputs.parameters.bgzipped_output}}"
+      - name: index-strelka-indels
+        dependencies: [bgzip-strelka-gt-indels]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "strelka"
+            - name: data-type
+              value: indels
+            - name: vcf
+              value: "{{tasks.bgzip-strelka-gt-indels.outputs.parameters.bgzipped_output}}"
+      - name: merge-strelka-vcfs
+        dependencies: [index-strelka-indels,index-strelka-snvs]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: merge-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "strelka"
+            - name: vcf1
+              value: "{{tasks.bgzip-strelka-gt-snvs.outputs.parameters.bgzipped_output}}"
+            - name: vcf2
+              value: "{{tasks.bgzip-strelka-gt-indels.outputs.parameters.bgzipped_output}}"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+      - name: strelka-rename-cancer
+        dependencies: [merge-strelka-vcfs]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: rename-sample
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{{tasks.merge-strelka-vcfs.outputs.parameters.merged-vcf}}"
+            - name: sample-to-replace
+              value: 'TUMOR'
+            - name: sample-new-name
+              value: "{{workflow.parameters.tumor-sample-name}}"
+      - name: strelka-rename-normal
+        dependencies: [strelka-rename-cancer]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: rename-sample
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{{tasks.merge-strelka-vcfs.outputs.parameters.merged-vcf}}"
+            - name: sample-to-replace
+              value: 'NORMAL'
+            - name: sample-new-name
+              value: "{{workflow.parameters.normal-sample-name}}"
+      - name: index-strelka-vcf
+        dependencies: [strelka-rename-normal]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "strelka"
+            - name: data-type
+              value: null
+            - name: vcf
+              value: "{{tasks.strelka-rename-normal.outputs.parameters.renamed_vcf}}"
+      - name: strelka-region-filter
+        dependencies: [index-strelka-vcf]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: select-variants
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "strelka"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: filename
+              value: "regfilter_{{workflow.parameters.id}}"
+            - name: vcf-ref
+              value: "{{tasks.strelka-rename-normal.outputs.parameters.renamed_vcf}}"
+            - name: target-intervals
+              value: "{{workflow.parameters.target-intervals}}"
+      - name: strelka-fp-filter
+        dependencies: [strelka-region-filter]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: fp-filter
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: service
+              value: "strelka"
+            - name: vcf
+              value: "{{tasks.strelka-region-filter.outputs.parameters.filtered_vcf}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: cancer-bam
+              value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+
 #      - name: ####
-#        dependencies: [#####]
+#        dependencies: [normal-index-bam,cancer-index-bam]
 #        templateRef:
 #          name: immuno-somatic-exome-detect-vars
 #          template: #####
