@@ -348,6 +348,8 @@ spec:
       - name: reference
       - name: vcf-ref
       - name: target-intervals
+      - name: service
+      - name: filename
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -356,7 +358,7 @@ spec:
     container:
       image: mgibio/gatk-cwl:3.6.0
       command: ['/usr/bin/java']
-      args: ["-Xmx8g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "SelectVariants", "-o", "{{inputs.parameters.output-dir}}/select_variants/selected_variants.vcf.gz", "-R", "{{inputs.parameters.reference}}", "--variant", "{{inputs.parameters.vcf-ref}}", "-L", "{{inputs.parameters.target-intervals}}"]
+      args: ["-Xmx8g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "SelectVariants", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.filename}}.vcf.gz", "-R", "{{inputs.parameters.reference}}", "--variant", "{{inputs.parameters.vcf-ref}}", "-L", "{{inputs.parameters.target-intervals}}"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -366,7 +368,7 @@ spec:
     outputs:
       parameters:
         - name: filtered_vcf
-          value:  "{{inputs.parameters.output-dir}}/select_variants/selected_variants.vcf.gz"
+          value:  "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.filename}}.vcf.gz"
 ## verify bam_id
   - name: verify-bamid
     inputs:
