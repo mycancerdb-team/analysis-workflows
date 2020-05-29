@@ -1,10 +1,10 @@
-#!/usr/bin/parallel --shebang-wrap -jTHREADS --ungroup -k /bin/bash
+#!/bin/bash
 
 set -o pipefail
 set -o errexit
 
-export tumor_bam="$3"
-export normal_bam="$4"
+export tumor_bam="$CANCERBAM"
+export normal_bam="$NORMALBAM"
 
 TUMOR=`perl -e 'my $header_str = qx(samtools view -H $ENV{tumor_bam}); my ($sample_name) = $header_str =~ /SM:([ -~]+)/; print $sample_name'` #Extracting the sample name from the TUMOR bam.
 NORMAL=`perl -e 'my $header_str = qx(samtools view -H $ENV{normal_bam}); my ($sample_name) = $header_str =~ /SM:([ -~]+)/; print $sample_name'` #Extracting the sample name from the NORMAL bam.
