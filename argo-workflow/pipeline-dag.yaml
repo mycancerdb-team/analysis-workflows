@@ -1285,7 +1285,7 @@ spec:
             - name: service
               value: "mutect"
             - name: data-type
-              value: null
+              value: 0 #this is used to prevent subdir creation. Accepts string values.
             - name: vcf
               value: "{{tasks.mutect-merge.outputs.parameters.mutect-merged-vcf}}"
       - name: mutect-fp-filter

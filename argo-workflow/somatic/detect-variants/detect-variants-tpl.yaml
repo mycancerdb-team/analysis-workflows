@@ -103,7 +103,7 @@ spec:
     container:
       image: mgibio/strelka-cwl:2.9.9
       command: ['/usr/bin/perl']
-      args: ["/usr/bin/docker_helper.pl", "{{inputs.parameters.threads}}", "{{inputs.parameters.output-dir}}/strelka", "--tumorBam=", "{{inputs.parameters.cancer-bam}}", "--normalBam=", "{{inputs.parameters.normal-bam}}", "--referenceFasta=", "{{inputs.parameters.reference}}", "--exome"]
+      args: ["/usr/bin/docker_helper.pl", "{{inputs.parameters.threads}}", "{{inputs.parameters.output-dir}}/strelka", "--tumorBam={{inputs.parameters.cancer-bam}}", "--normalBam={{inputs.parameters.normal-bam}}", "--referenceFasta={{inputs.parameters.reference}}", "--exome"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'

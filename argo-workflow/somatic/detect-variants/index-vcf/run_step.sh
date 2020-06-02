@@ -3,7 +3,7 @@
 set -o pipefail
 set -o errexit
 
-if [ -z "$DATATYPE" ]
+if [[ "$DATATYPE" == 0 ]];
 then
   #If $DATATYPE IS NULL do this
   pushd "$OUTPUT/$SERVICE"
