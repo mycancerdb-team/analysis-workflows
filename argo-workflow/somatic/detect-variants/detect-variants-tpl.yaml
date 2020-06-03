@@ -250,8 +250,6 @@ spec:
       - name: output-dir
       - name: "cpu"
       - name: "mem"
-      - name: vcf
-      - name: data-type
       - name: snv-vcf
       - name: indels-vcf
       - name: hc-snv-vcf
