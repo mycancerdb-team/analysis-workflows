@@ -7,3 +7,4 @@ for my $line (<>) {
 
     my ($chrom, $start, $stop) = split(/\t/, $line);
     say(join("\t", $chrom, $start-1, $stop));
+  }

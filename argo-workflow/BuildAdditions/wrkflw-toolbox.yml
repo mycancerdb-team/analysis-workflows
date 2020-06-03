@@ -20,7 +20,7 @@ spec:
       - name: mgbio-cred
       containers:
       - name: wrkflw-tools
-        image: docker.cancerdb.io/mgbio-workflow/hs-metrics:1.0.0
+        image: docker.cancerdb.io/mgbio-workflow/int-to-bed:1.0.0
         command: ["/bin/bash", "-c", "--"]
         args: ["while true; do sleep 30; done;"]
         imagePullPolicy: IfNotPresent
