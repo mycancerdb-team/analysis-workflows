@@ -113,9 +113,9 @@ spec:
     outputs:
       parameters:
         - name: snvs
-          value: "{{inputs.parameters.output-dir}}/strelka/somatic.snvs.vcf.gz"
+          value: "{{inputs.parameters.output-dir}}/strelka/results/variants/somatic.snvs.vcf.gz"
         - name: indels
-          value: "{{inputs.parameters.output-dir}}/strelka/somatic.indels.vcf.gz"
+          value: "{{inputs.parameters.output-dir}}/strelka/results/variants/somatic.indels.vcf.gz"
   - name: strelka-add-gt
     inputs:
       parameters:
@@ -195,10 +195,10 @@ spec:
         mountPath: /ref-hg38
     outputs:
       parameters:
-        - name: snvs
-          value: "{{inputs.parameters.output-dir}}/varscan/output.snp.vcf"
+        - name: snps
+          value: "{{inputs.parameters.output-dir}}/varscan/variants/output.snp.vcf"
         - name: indels
-          value: "{{inputs.parameters.output-dir}}/varscan/output.snp.vcf"
+          value: "{{inputs.parameters.output-dir}}/varscan/variants/output.indels.vcf"
   - name: varscan-process
     inputs:
       parameters:
@@ -207,6 +207,7 @@ spec:
       - name: "cpu"
       - name: "mem"
       - name: vcf
+      - name: data-type
       - name: max-normal-freq
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
@@ -214,9 +215,14 @@ spec:
         persistentVolumeClaim:
           claimName: '{{inputs.parameters.pvc-name}}'
     container:
-      image: mgibio/cle:v1.3.1
-      command: ['java']
-      args: ["-jar", "/opt/varscan/VarScan.jar", "processSomatic", "{{inputs.parameters.vcf}}", "{{inputs.parameters.max-normal-freq}}"]
+      image: docker.cancerdb.io/mgbio-workflow/varscan-proc:1.3.1
+      env:
+      - name: VCF
+        value: "{{inputs.parameters.vcf}}"
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      - name: MAXNRMLFRQ
+        value: "{{inputs.parameters.max-normal-freq}}"
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -226,17 +232,58 @@ spec:
     outputs:
       parameters:
         - name: somatic_hc
-          value: ###
+          value: "output.{{inputs.parameters.data-type}}.Somatic.hc.vcf"
         - name: somatic
-          value: ###
+          value: "output.{{inputs.parameters.data-type}}.Somatic.vcf"
         - name: germline_hc
-          value: ###
+          value: "output.{{inputs.parameters.data-type}}.Germline.hc.vcf"
         - name: germline
-          value: ###
+          value: "output.{{inputs.parameters.data-type}}.Germline.vcf"
         - name: loh_hc
-          value: ###
+          value: "output.{{inputs.parameters.data-type}}.LOH.hc.vcf"
         - name: loh
-          value: ###
+          value: "output.{{inputs.parameters.data-type}}.LOH.vcf"
+  - name: varscan-post-process
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: vcf
+      - name: data-type
+      - name: snv-vcf
+      - name: indels-vcf
+      - name: hc-snv-vcf
+      - name: hc-indels-vcf
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/varscan-post-proc:1.0.0
+      env:
+      - name: DATADIR
+        value: "{{inputs.parameters.output-dir}}"
+      command: ['/root/run_step.sh']
+      args: ["{{inputs.parameters.snv-vcf}}", "{{inputs.parameters.indels-vcf}}", "{{inputs.parameters.hc-snv-vcf}}", "{{inputs.parameters.hc-indels-vcf}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: indexed_snvs
+          value: "{{inputs.parameters.snv-vcf}}.gz"
+        - name: indexed_hc_snvs
+          value: "{{inputs.parameters.hc-snv-vcf}}.gz"
+        - name: indexed_indels
+          value: "{{inputs.parameters.indels-vcf}}.gz"
+        - name: indexed_hc_indels
+          value: "{{inputs.parameters.hc-indels-vcf}}"
 ##END VARSCAN BLOCK
   - name: index-vcf
     inputs:
@@ -408,7 +455,7 @@ spec:
       - name: vcf
       - name: filtered-vcf
       - name: service #varscan
-      - name: type #indels snvs
+      - name: id
       - name: reference
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
@@ -418,7 +465,7 @@ spec:
     container:
       image: mgibio/gatk-cwl:3.6.0
       command: ['/usr/bin/java']
-      args: ["-Xmx4g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "VariantFiltration", "--maskName", "processSomatic", "--filterNotInMask", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/merged_{{inputs.parameters.type}}.vcf.gz", "-R", "{{inputs.parameters.reference}}", "--variant", "{{inputs.parameters.vcf}}", "--mask", "{{inputs.parameters.filtered-vcf}}"]
+      args: ["-Xmx4g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "VariantFiltration", "--maskName", "processSomatic", "--filterNotInMask", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/merged_{{inputs.parameters.id}}.vcf.gz", "-R", "{{inputs.parameters.reference}}", "--variant", "{{inputs.parameters.vcf}}", "--mask", "{{inputs.parameters.filtered-vcf}}"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -428,7 +475,7 @@ spec:
     outputs:
       parameters:
         - name: merged-filter-vcf
-          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/merged_{{inputs.parameters.type}}.vcf.gz"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/merged_{{inputs.parameters.id}}.vcf.gz"
   - name: intervals-to-bed
     inputs:
       parameters:
@@ -436,6 +483,7 @@ spec:
       - name: output-dir
       - name: "cpu"
       - name: "mem"
+      - name: service
       - name: interval-list
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
@@ -444,18 +492,19 @@ spec:
           claimName: '{{inputs.parameters.pvc-name}}'
     container:
       image: docker.cancerdb.io/mgbio-workflow/int-to-bed:1.0.0
-      command: ['/usr/bin/perl']
-      args: ["/root/run_step.pl", "{{inputs.parameters.interval-list}}"]
+      env:
+      - name: INTLIST
+        value: "{{inputs.parameters.interval-list}}"
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
         mountPath: /data
       - name: pvc-reference
         mountPath: /ref-hg38
-#    outputs:
-#      parameters:
-#        - name: ###
-#          value: ###
+    outputs:
+      parameters:
+        - name: interval_bed
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/interval_list.bed"
   - name: split-interval-list
     inputs:
       parameters:
