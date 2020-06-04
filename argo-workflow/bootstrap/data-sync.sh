@@ -11,7 +11,7 @@ aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/cancer-exome/" "${OUTPUTDIR}/samples/ca
 aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/somatic-exome/" "${OUTPUTDIR}/samples/somatic-exome/" --recursive
 aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/cancer-rna/" "${OUTPUTDIR}/samples/cancer-rna/" --recursive
 #General Folders
-mkdir -p ${OUTPUTDIR}/output/{select_variants,mutect/split-ints,final,strelka/{indels,snv},varscan/{variants,indels,snv},pindel/split-beds}
+mkdir -p ${OUTPUTDIR}/output/{select_variants,mutect/split-ints,final,strelka/{indels,snv},varscan/{variants,indels,snv},pindel/split-beds,docm/raw}
 #RNA Folders
 mkdir -p ${OUTPUTDIR}/output/{rna_final,rna_trimmed_read,rna_hisat2_align/aligned_bam,rna_merged_bam,rna_index_bam}
 #Normal Folders
