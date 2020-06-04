@@ -297,7 +297,6 @@ spec:
       - name: cancer-sample-name
       - name: normal-sample-name
       - name: chromosome
-      - name: region-file
       - name: reference
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
@@ -323,7 +322,7 @@ spec:
         value: "{{inputs.parameters.chromosome}}"
       - name: OUTPUTDIR
         value: "{{inputs.parameters.output-dir}}"
-      command: ['exec_step.sh']
+      command: ['/root/exec_step.sh']
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -398,6 +397,99 @@ spec:
         - name: processed_vcf
           value: "{{inputs.parameters.output-dir}}/pindel/vcf/pindel.noend.vcf.gz"
 ##END PINDEL BLOCK
+##BEGIN DOCM BLOCK
+  - name: docm-haplotyper
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: reference
+      - name: cancer-bam
+      - name: normal-bam
+      - name: docm-vcf
+      - name: interval-list
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/docm-haplotype:4.1.2.0
+      env:
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      command: ['/root/run_step.sh']
+      args: ["{{inputs.parameters.reference}}", "{{inputs.parameters.normal-bam}}", "{{inputs.parameters.cancer-bam}}", "{{inputs.parameters.docm-vcf}}", "{{inputs.parameters.interval-list}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: docm_raw_variants
+          value: "{{inputs.parameters.output-dir}}/docm/raw/docm_raw_variants.vcf"
+  - name: docm-vt-compose
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: vcf
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: quay.io/biocontainers/vt:0.57721--hf74b74d_1
+      command: ['vt']
+      args: ["decompose", "-s", "-o", "{{inputs.parameters.output-dir}}/docm/decom/decomposed.vcf.gz"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: decomposed_vcf
+          value: "{{inputs.parameters.output-dir}}/docm/decom/decomposed.vcf.gz"
+  - name: filter-dcom
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: decom-vcf
+      - name: normal-bam
+      - name: cancer-bam
+      - name: filter-docm #boolean true
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/filter-dcom:1.4.2
+      command: ['/usr/bin/perl']
+      args: ["/root/run_step.pl", "{{inputs.parameters.decom-vcf}}", "{{inputs.parameters.normal-bam}}", "{{inputs.parameters.cancer-bam}}", "{{inputs.parameters.output-dir}}/docm/docm_filtered_variants.vcf", "{{inputs.parameters.filter-docm}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: docm_filtered_variants
+          value: "{{inputs.parameters.output-dir}}/docm/docm_filtered_variants.vcf"
+##END DOCM BLOCK
   - name: index-vcf
     inputs:
       parameters:
