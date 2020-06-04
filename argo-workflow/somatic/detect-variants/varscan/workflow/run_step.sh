@@ -3,12 +3,6 @@
 set -o errexit
 set -o nounset
 
-if [ $# -lt 7 ]
-then
-    echo "Usage: $0 [TUMOR_BAM] [NORMAL_BAM] [REFERENCE] [STRAND_FILTER] [MIN_COVERAGE] [MIN_VAR_FREQ] [P_VALUE] [roi_bed?]"
-    exit 1
-fi
-
 TUMOR_BAM="$TUMORBAM"
 NORMAL_BAM="$NORMALBAM"
 REFERENCE="$REF"

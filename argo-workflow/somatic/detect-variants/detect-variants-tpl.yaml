@@ -283,6 +283,121 @@ spec:
         - name: indexed_hc_indels
           value: "{{inputs.parameters.hc-indels-vcf}}"
 ##END VARSCAN BLOCK
+##BEGIN PINDEL BLOCK
+  - name: pindel-workflow
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: cancer-bam
+      - name: normal-bam
+      - name: insert-size
+      - name: cancer-sample-name
+      - name: normal-sample-name
+      - name: chromosome
+      - name: region-file
+      - name: reference
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/pindel:1.4.2
+      env:
+      - name: CANCERBAM
+        value: "{{inputs.parameters.cancer-bam}}"
+      - name: NORMALBAM
+        value: "{{inputs.parameters.normal-bam}}"
+      - name: INSRTSIZE
+        value: "{{inputs.parameters.insert-size}}"
+      - name: CANCERNAME
+        value: "{{inputs.parameters.cancer-sample-name}}"
+      - name: NORMALNAME
+        value: "{{inputs.parameters.normal-sample-name}}"
+      - name: REF
+        value: "{{inputs.parameters.reference}}"
+      - name: CHROMO
+        value: "{{inputs.parameters.chromosome}}"
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      command: ['exec_step.sh']
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: pindel_head
+          value: "{{inputs.parameters.output-dir}}/pindel/all_region_pindel.head"
+  - name: pindel-somatic-filter
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: service
+      - name: pindel-file
+      - name: reference
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/pindel-som-filter:1.3.1
+      env:
+      - name: PINDELFILE
+        value: "{{inputs.parameters.pindel-file}}"
+      - name: OUTPUT
+        value: "{{inputs.parameters.output-dir}}"
+      - name: SERVICE
+        value: "{{inputs.parameters.service}}"
+      - name: REF
+        value: "{{inputs.parameters.reference}}"
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: pindel_vcf
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/pindel.out.vcf"
+  - name: pindel-remove-tags
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: pindel-vcf
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/bcftools-cwl:1.3.1
+      command: ['/opt/bcftools/bin/bcftools']
+      args: ["annotate", "-x", "INFO/END", "-Oz", "-o", "{{inputs.parameters.output-dir}}/pindel/pindel.noend.vcf.gz"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: processed_vcf
+          value: "{{inputs.parameters.output-dir}}/pindel/vcf/pindel.noend.vcf.gz"
+##END PINDEL BLOCK
   - name: index-vcf
     inputs:
       parameters:
@@ -493,6 +608,10 @@ spec:
       env:
       - name: INTLIST
         value: "{{inputs.parameters.interval-list}}"
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      - name: SERVICE
+        value: "{{inputs.parameters.service}}"
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -532,6 +651,35 @@ spec:
       parameters:
         - name: split_interval_lists
           value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/split-ints"
+  - name: split-interval-list-to-bed
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: "cpu"
+      - name: "mem"
+      - name: interval-list #mutect-interval-list
+      - name: scatter-count #5
+      - name: service #pindel
+      - name: output-dir
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/cle:v1.4.2
+      command: ['/usr/bin/perl']
+      args: ["/usr/bin/split_interval_list_to_bed_helper.pl", "OUTPUT={{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/split-beds", "INPUT={{inputs.parameters.interval-list}}", "SCATTER_COUNT={{inputs.parameters.scatter-count}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: split_interval_beds
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/split-beds" #*.scattered.interval_list
 
   #- name: ###
   #  inputs:
