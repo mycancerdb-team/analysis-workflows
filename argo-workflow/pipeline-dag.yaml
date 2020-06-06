@@ -51,6 +51,12 @@ spec:
     - name: hisat-index
     - name: trim-adapter-file
     - name: somalier-vcf
+    - name: normal-sample-name
+    - name: tumor-sample-name
+    - name: scatter-count
+    - name: docm-vcf
+    - name: filter-docm-variants
+    - name: mutect-interval-list
   onExit: exit-handler
   templates:
   - name: generate-pvc
@@ -1660,7 +1666,7 @@ spec:
             - name: data-type
               value: "snp"
             - name: vcf
-              value: "{{taks.varscan-workflow.outputs.parameters.snps}}"
+              value: "{{tasks.varscan-workflow.outputs.parameters.snps}}"
       - name: varscan-process-indels
         dependencies: [varscan-workflow]
         templateRef:
@@ -1679,9 +1685,9 @@ spec:
             - name: max-normal-freq
               value: 0.05
             - name: data-type
-              value: "indels"
+              value: "indel"
             - name: vcf
-              value: "{{taks.varscan-workflow.outputs.parameters.indels}}"
+              value: "{{tasks.varscan-workflow.outputs.parameters.indels}}"
 ## BgZip and index SNVs and Indels
       - name: varscan-bgzip-index-vars
         dependencies: [varscan-process-snp,varscan-process-indels]
@@ -1927,7 +1933,7 @@ spec:
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: interval-list
-              value: "{{workflow.parameters.mutect-interval-list}}"
+              value: "{{workflow.parameters.summary-intervals}}"
             - name: scatter-count
               value: "{{workflow.parameters.scatter-count}}"
             - name: service
@@ -2227,6 +2233,15 @@ spec:
             - name: vcf
               value: "{{tasks.bgzip-docm-filter-vcf.outputs.parameters.bgzipped_output}}"
 ## End DOCM Block
+#Dep on final step of all var-calls
+## Combine
+## Add docm vars
+## Vt decompose
+## index
+## vep annotate
+## bam readcount normal
+## bam readcount cancer
+##
 #      - name: ####
 #        dependencies: [normal-index-bam,cancer-index-bam]
 #        templateRef:

@@ -198,7 +198,7 @@ spec:
         - name: snps
           value: "{{inputs.parameters.output-dir}}/varscan/variants/output.snp.vcf"
         - name: indels
-          value: "{{inputs.parameters.output-dir}}/varscan/variants/output.indels.vcf"
+          value: "{{inputs.parameters.output-dir}}/varscan/variants/output.indel.vcf"
   - name: varscan-process
     inputs:
       parameters:
@@ -232,17 +232,17 @@ spec:
     outputs:
       parameters:
         - name: somatic_hc
-          value: "output.{{inputs.parameters.data-type}}.Somatic.hc.vcf"
+          value: "{{input.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.Somatic.hc.vcf"
         - name: somatic
-          value: "output.{{inputs.parameters.data-type}}.Somatic.vcf"
+          value: "{{input.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.Somatic.vcf"
         - name: germline_hc
-          value: "output.{{inputs.parameters.data-type}}.Germline.hc.vcf"
+          value: "{{input.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.Germline.hc.vcf"
         - name: germline
-          value: "output.{{inputs.parameters.data-type}}.Germline.vcf"
+          value: "{{input.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.Germline.vcf"
         - name: loh_hc
-          value: "output.{{inputs.parameters.data-type}}.LOH.hc.vcf"
+          value: "{{input.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.LOH.hc.vcf"
         - name: loh
-          value: "output.{{inputs.parameters.data-type}}.LOH.vcf"
+          value: "{{input.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.LOH.vcf"
   - name: varscan-post-process
     inputs:
       parameters:
@@ -448,7 +448,7 @@ spec:
     container:
       image: quay.io/biocontainers/vt:0.57721--hf74b74d_1
       command: ['vt']
-      args: ["decompose", "-s", "-o", "{{inputs.parameters.output-dir}}/docm/decom/decomposed.vcf.gz"]
+      args: ["decompose", "{{inputs.parameters.vcf}}", "-s", "-o", "{{inputs.parameters.output-dir}}/docm/decom/decomposed.vcf.gz"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'

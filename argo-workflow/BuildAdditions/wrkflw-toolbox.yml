@@ -20,7 +20,24 @@ spec:
       - name: mgbio-cred
       containers:
       - name: wrkflw-tools
-        image: docker.cancerdb.io/mgbio-workflow/int-to-bed:1.0.0
+        image: docker.cancerdb.io/mgbio-workflow/pindel:1.4.2
+        env:
+        - name: CANCERBAM
+          value: "/data/output/cancer_final/cancer_0.bam"
+        - name: NORMALBAM
+          value: "/data/output/normal_final/normal_0.bam"
+        - name: INSRTSIZE
+          value: "400"
+        - name: CANCERNAME
+          value: "H_NJ-HCC1395-HCC1395"
+        - name: NORMALNAME
+          value: "H_NJ-HCC1395-HCC1395_BL"
+        - name: REF
+          value: "/ref-hg38/reference_genome/all_sequences.fa"
+        - name: CHROMO
+          value: "ALL"
+        - name: OUTPUTDIR
+          value: "/data/output"
         command: ["/bin/bash", "-c", "--"]
         args: ["while true; do sleep 30; done;"]
         imagePullPolicy: IfNotPresent

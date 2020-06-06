@@ -39,7 +39,7 @@ trim-adapter-file: /ref-hg38/psomagen.fa
 somalier-vcf: /ref-hg38/known_variants/somalier_GRCh38.vcf.gz
 mutect-interval-list: /ref-hg38/somatic_inputs/hla_and_brca_genes.interval_list
 filter-docm-variants: true
-scatter-count: 5
+scatter-count: 50
 tumor-sample-name: H_NJ-HCC1395-HCC1395
 normal-sample-name: H_NJ-HCC1395-HCC1395_BL
 docm-vcf: /ref-hg38/somatic_inputs/hla_and_brca_genes_docm.vcf.gz
