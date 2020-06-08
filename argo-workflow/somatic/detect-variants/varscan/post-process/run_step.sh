@@ -9,6 +9,6 @@ do
   /opt/htslib/bin/bgzip -f $i
 
   ##Index
-  pushd $OUTPUTDIR/varscan/variants
+  pushd "$OUTPUTDIR/varscan/variants"
   /usr/bin/tabix -p "vcf" "${i}.gz"
 done

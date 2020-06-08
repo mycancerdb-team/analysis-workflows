@@ -232,17 +232,17 @@ spec:
     outputs:
       parameters:
         - name: somatic_hc
-          value: "{{input.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.Somatic.hc.vcf"
+          value: "{{inputs.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.Somatic.hc.vcf"
         - name: somatic
-          value: "{{input.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.Somatic.vcf"
+          value: "{{inputs.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.Somatic.vcf"
         - name: germline_hc
-          value: "{{input.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.Germline.hc.vcf"
+          value: "{{inputs.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.Germline.hc.vcf"
         - name: germline
-          value: "{{input.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.Germline.vcf"
+          value: "{{inputs.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.Germline.vcf"
         - name: loh_hc
-          value: "{{input.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.LOH.hc.vcf"
+          value: "{{inputs.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.LOH.hc.vcf"
         - name: loh
-          value: "{{input.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.LOH.vcf"
+          value: "{{inputs.parameters.output-dir}}/varscan/variants/output.{{inputs.parameters.data-type}}.LOH.vcf"
   - name: varscan-post-process
     inputs:
       parameters:
@@ -262,7 +262,7 @@ spec:
     container:
       image: docker.cancerdb.io/mgbio-workflow/varscan-post-proc:1.0.0
       env:
-      - name: DATADIR
+      - name: OUTPUTDIR
         value: "{{inputs.parameters.output-dir}}"
       command: ['/root/run_step.sh']
       args: ["{{inputs.parameters.snv-vcf}}", "{{inputs.parameters.indels-vcf}}", "{{inputs.parameters.hc-snv-vcf}}", "{{inputs.parameters.hc-indels-vcf}}"]
