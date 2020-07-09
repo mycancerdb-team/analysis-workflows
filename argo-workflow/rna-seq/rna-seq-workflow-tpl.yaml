@@ -11,7 +11,36 @@ spec:
     - name: mgbio-cred
     - name: mcdb-bot
   templates:
-  - name: trim-fastq
+  - name: bam-to-fastq
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: id
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: data-type #normal,cancer,rna
+      - name: bam-file
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/rnaseq:1.0.0
+      command: ['/usr/bin/java']
+      args: ["-Xmx10g", "-jar", "/opt/picard/picard.jar", "SamToFastq", "VALIDATION_STRINGENCY=SILENT", "I=", "{{inputs.parameters.bam-file}}", "F=", "{{inputs.parameters.output-dir}}/output/{{inputs.parameters.data-type}}_final/read1.fastq", "F2=", "{{inputs.parameters.output-dir}}/output/{{inputs.parameters.data-type}}_final/read2.fastq"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+    outputs:
+      parameters:
+        - name: fastq1
+          value: "{{inputs.parameters.output-dir}}/output/{{inputs.parameters.data-type}}_final/read1.fastq"
+        - name: fastq2
+          value: "{{inputs.parameters.output-dir}}/output/{{inputs.parameters.data-type}}_final/read2.fastq"
+  - name: trim-reads
     inputs:
       parameters:
       - name: pvc-name

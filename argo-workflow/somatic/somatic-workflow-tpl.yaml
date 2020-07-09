@@ -20,8 +20,9 @@ spec:
       - name: "mem"
       - name: threads
       - name: data-type # normal or cancer
-      - name: exome-fastq-r1
-      - name: exome-fastq-r2
+#      - name: exome-fastq-r1
+#      - name: exome-fastq-r2
+      - name: bam-file
       - name: readGroup
       - name: reference
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
@@ -37,7 +38,7 @@ spec:
       - name: DATATYPE
         value: "{{inputs.parameters.data-type}}"
       command: ['/root/run_step.sh']
-      args: ["-1", "{{inputs.parameters.exome-fastq-r1}}", "-2", "{{inputs.parameters.exome-fastq-r2}}", "-g", "{{inputs.parameters.readGroup}}", "-r", "{{inputs.parameters.reference}}", "-n", "{{inputs.parameters.threads}}"]
+      args: ["-b", "{{inputs.parameters.bam-file}}", "-g", "{{inputs.parameters.readGroup}}", "-r", "{{inputs.parameters.reference}}", "-n", "{{inputs.parameters.threads}}"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -434,3 +435,94 @@ spec:
           value: "{{inputs.parameters.output-dir}}/final/concordance.somalier.pairs.tsv"
         - name: somalier_samples
           value: "{{inputs.parameters.output-dir}}/final/concordance.somalier.samples.tsv"
+#  - name: cnv-kit
+#    inputs:
+#      parameters:
+#      - name: pvc-name
+#      - name: output-dir
+#      - name: "cpu"
+#      - name: "mem"
+#      - name: cancer-bam
+#      - name: normal-bam
+#      - name: bait-intervals #bedfile ## Need to make sure is in place. # Need to clarify again the difference between files and which one is baits.bed
+#      - name: reference
+#      - name: method
+#    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+#    volumes:
+#      - name: '{{inputs.parameters.pvc-name}}'
+#        persistentVolumeClaim:
+#          claimName: '{{inputs.parameters.pvc-name}}'
+#    container:
+#      image: etal/cnvkit:0.9.5
+#      command: ['/usr/bin/python']
+#      args: ["/usr/local/bin/cnvkit.py", "batch", "{{inputs.parameters.cancer-bam}}", "--normal", "{{inputs.parameters.normal-bam}}", "--targets", "{{inputs.parameters.bait-intervals}}", "--fasta", "{{inputs.parameters.reference}}", "--method", "hybrid", "--diagram", "--scatter", "--output-dir", "{{inputs.parameters.output-dir}}/cnvkit"]
+#      imagePullPolicy: Always
+#      volumeMounts:
+#      - name: '{{inputs.parameters.pvc-name}}'
+#        mountPath: /data
+#      - name: pvc-reference
+#        mountPath: /ref-hg38
+#    outputs:
+#      parameters:
+#        - name: intervals_antitarget
+#          value: ###
+#        - name: intervals_target
+#          value: ###
+#        - name: normal_antitarget_coverage
+#          value: ###
+#        - name: normal_target_coverage
+#          value: ###
+#        - name: reference_coverage
+#          value: ###
+#        - name: cn_diagram
+#          value: ###
+#        - name: cn_scatter_plot
+#          value: ###
+#        - name: tumor_antitarget_coverage
+#          value: ###
+#        - name: ###
+#          value: ###
+#        - name: ###
+#          value: ###
+#        - name: ###
+#          value: ###
+
+#manta_somatic
+#bam_to_cram
+#index_cram
+
+
+
+  #- name: ###
+  #  inputs:
+  #    parameters:
+  #    - name: pvc-name
+  #    - name: output-dir
+  #    - name: "cpu"
+  #    - name: "mem"
+  #    - name: threads
+  #    - name: ###
+  #    - name: ###
+  #    - name: ###
+  #  podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+  #  volumes:
+  #    - name: '{{inputs.parameters.pvc-name}}'
+  #      persistentVolumeClaim:
+  #        claimName: '{{inputs.parameters.pvc-name}}'
+  #  container:
+  #    image: ##### docker.cancerdb.io/mgbio-workflow/
+  #    env:
+  #    - name: ###
+  #      value: ###
+  #    command: ['###']
+  #    args: ["###"]
+  #    imagePullPolicy: Always
+  #    volumeMounts:
+  #    - name: '{{inputs.parameters.pvc-name}}'
+  #      mountPath: /data
+  #    - name: pvc-reference
+  #      mountPath: /ref-hg38
+  #  outputs:
+  #    parameters:
+  #      - name: ###
+  #        value: ###
