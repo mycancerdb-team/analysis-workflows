@@ -11,18 +11,30 @@ set -o errexit
 #ENVVAR REF
 #ENVVAR CHROMO
 #ENVVAR OUTPUTDIR
+#ENVVAR WRKNGDIR
 
-for d in ${OUTPUTDIR}/pindel/split-beds/*/; do printf "${d}\n" >> /root/scatter_list.txt ; done
+#enumerate the scattered dirs into a list for parsing
+#for d in ${OUTPUTDIR}/pindel/split-beds/*/; do printf "${d}\n" >> /root/scatter_list.txt ; done
 
-while read i; do
-  echo -n "$CANCERBAM $NORMALBAM $INSRTSIZE $CANCERNAME $NORMALNAME -f $REF -c $CHROMO -j ${i}scattered.interval_list"
-  pushd ${i} && /usr/bin/perl /root/run_step.pl $CANCERBAM $NORMALBAM $INSRTSIZE $CANCERNAME $NORMALNAME -f $REF -c $CHROMO -j "${i}scattered.interval_list"
-  export WRKDIR=${i} && /root/cat-out.sh "${i}all_D" "${i}all_SI" "${i}all_TD" "${i}all_LI" "${i}all_INV" && popd;
-done </root/scatter_list.txt
+# Pindel function used to invoke pindel per scattered dir and associated bed file
+pindel () {
+  echo -n "$NORMALBAM $CANCERBAM $INSRTSIZE $NORMALNAME $CANCERNAME -f $REF -c $CHROMO -j ${1}scattered.bed"
+  pushd $1 && /usr/bin/perl /root/run_step.pl $NORMALBAM $CANCERBAM $INSRTSIZE $NORMALNAME $CANCERNAME -f $REF -c $CHROMO -j "${1}scattered.bed"
+  export WRKDIR=$1 && /root/cat-out.sh "${1}all_D" "${1}all_SI" "${1}all_TD" "${1}all_LI" "${1}all_INV" && popd;
+}
+##
+pindel $WRKNGDIR
+##
+/bin/cat "${WRKNGDIR}per_chromosome_pindel.out" | /bin/grep ChrID /dev/stdin >> "${OUTPUTDIR}/pindel/all_region_pindel.head"
 
+## Invoke pindel function forked and parallelized, wait for all instances to complete before moving on
+#while read p; do
+#  pindel ${p}
+#done </root/scatter_list.txt
+#wait
 
-while read i; do
-  /bin/cat "${i}per_chromosome_pindel.out" | /bin/grep ChrID /dev/stdin >> "${OUTPUTDIR}/pindel/all_region_pindel.head";
-done </root/scatter_list.txt
+#while read i; do
+#  /bin/cat "${i}per_chromosome_pindel.out" | /bin/grep ChrID /dev/stdin >> "${OUTPUTDIR}/pindel/all_region_pindel.head";
+#done </root/scatter_list.txt
 
 :
