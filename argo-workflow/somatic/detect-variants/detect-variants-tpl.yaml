@@ -443,6 +443,8 @@ spec:
       - name: "cpu"
       - name: "mem"
       - name: vcf
+      - name: service
+      - name: id
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -451,7 +453,7 @@ spec:
     container:
       image: quay.io/biocontainers/vt:0.57721--hf74b74d_1
       command: ['vt']
-      args: ["decompose", "{{inputs.parameters.vcf}}", "-s", "-o", "{{inputs.parameters.output-dir}}/docm/decom/decomposed.vcf.gz"]
+      args: ["decompose", "{{inputs.parameters.vcf}}", "-s", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/decom/{{inputs.parameters.id}}_decomposed.vcf.gz"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -461,7 +463,7 @@ spec:
     outputs:
       parameters:
         - name: decomposed_vcf
-          value: "{{inputs.parameters.output-dir}}/docm/decom/decomposed.vcf.gz"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/decom/{{inputs.parameters.id}}_decomposed.vcf.gz"
   - name: filter-dcom
     inputs:
       parameters:
@@ -529,6 +531,82 @@ spec:
       parameters:
         - name: vcf-index
           value: "{{inputs.parameters.vcf}}.tbi"
+### Fp-Filter Tools
+## vcf_sanitize
+  - name: vcf-sanitize
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: vcf
+      - name: service
+      - name: id
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/vcf-sani:1.0.0
+      env:
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      - name: SVC
+        value: "{{inputs.parameters.service}}"
+      - name: ID
+        value: "{{inputs.parameters.id}}"
+      command: ['/root/run_step.sh']
+      args: ["{{inputs.parameters.vcf}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: sani_vcf
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/sani/{{inputs.parameters.id}}.sanitized.vcf"
+        - name: sani_vcf_gz
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/sani/{{inputs.parameters.id}}.sanitized.vcf.gz"
+        - name: sani_vcf_tbi
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/sani/{{inputs.parameters.id}}.sanitized.vcf.tbi"
+## normalize-vars
+  - name: normalize-vars
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: threads
+      - name: reference
+      - name: vcf
+      - name: service
+      - name: id
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/gatk-cwl:3.6.0
+      command: ['/usr/bin/java']
+      args: ["-Xmx8g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "LeftAlignAndTrimVariants", "-R", "{{inputs.parameters.reference}}", "--variant", "{{inputs.parameters.vcf}}", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/normalized/{{inputs.parameters.id}}.normalized.vcf.gz"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: normalized_vcf
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/normalized/{{inputs.parameters.id}}.normalized.vcf.gz"
+        - name: normalized_vcf_index
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/normalized/{{inputs.parameters.id}}.normalized.vcf.gz.tbi"
   - name: fp-filter
     inputs:
       parameters:
@@ -550,7 +628,7 @@ spec:
     container:
       image: mgibio/fp_filter-cwl:1.0.1
       command: ['/usr/bin/perl']
-      args: ["/usr/bin/fpfilter.pl", "--bam-readcount", "/usr/bin/bam-readcount", "--samtools", "/opt/samtools/bin/samtools", "--output", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/fpfilter_{{inputs.parameters.id}}.vcf", "--reference", "{{inputs.parameters.reference}}", "--bam-file", "{{inputs.parameters.cancer-bam}}", "--vcf-file", "{{inputs.parameters.vcf}}", "--sample", "{{inputs.parameters.sample-name}}", "--min-var-freq", "0.05"]
+      args: ["/usr/bin/fpfilter.pl", "--bam-readcount", "/usr/bin/bam-readcount", "--samtools", "/opt/samtools/bin/samtools", "--output", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/fpfilter/filtered_{{inputs.parameters.id}}.vcf", "--reference", "{{inputs.parameters.reference}}", "--bam-file", "{{inputs.parameters.cancer-bam}}", "--vcf-file", "{{inputs.parameters.vcf}}", "--sample", "{{inputs.parameters.sample-name}}", "--min-var-freq", "0.05"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -559,10 +637,8 @@ spec:
         mountPath: /ref-hg38
     outputs:
       parameters:
-        - name: unfiltered_vcf
-          value: "{{inputs.parameters.vcf}}"
         - name: filtered_vcf
-          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/fpfilter_{{inputs.parameters.id}}.vcf"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/fpfilter/filtered_{{inputs.parameters.id}}.vcf"
   - name: bgzip
     inputs:
       parameters:
@@ -773,7 +849,7 @@ spec:
         value: "{{inputs.parameters.service}}"
       - name: SCTTRCNT
         value: "{{inputs.parameters.scatter-count}}"
-      command: ['/root/run_step']
+      command: ['/root/run_step.sh']
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'

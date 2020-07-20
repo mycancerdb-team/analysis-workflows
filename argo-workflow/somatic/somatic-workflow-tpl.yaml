@@ -131,9 +131,22 @@ spec:
         persistentVolumeClaim:
           claimName: '{{inputs.parameters.pvc-name}}'
     container:
-      image: mgibio/gatk-cwl:3.6.0
-      command: ['/usr/bin/java']
-      args: ["-Xmx32g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "BaseRecalibrator", "-L", "{{inputs.parameters.bqsr-intervals}}", "-R", "{{inputs.parameters.reference}}", "-I", "{{inputs.parameters.bam-file}}", "-knownSites", "{{inputs.parameters.known-indels}}", "-knownSites", "{{inputs.parameters.dbsnp-vcf}}", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_bqsr/{{inputs.parameters.data-type}}_bqsr.table", "--preserve_qscores_less_than", "6", "--disable_auto_index_creation_and_locking_when_reading_rods", "--disable_bam_indexing", "-dfrac", ".1", "-nct", "4"]
+      image: docker.cancerdb.io/mgbio-workflow/bqsr:1.0.0
+      env:
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      - name: DATATYPE
+        value: "{{inputs.parameters.data-type}}"
+      - name: BAM
+        value: "{{inputs.parameters.bam-file}}"
+      - name: REF
+        value: "{{inputs.parameters.reference}}"
+      - name: BQSRINT
+        value: "{{inputs.parameters.bqsr-intervals}}"
+      - name: KNWNINDELS
+        value: "{{inputs.parameters.known-indels}}"
+      - name: DBSNP
+        value: "{{inputs.parameters.dbsnp-vcf}}"
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'

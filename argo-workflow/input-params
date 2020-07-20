@@ -1,4 +1,4 @@
-id: MCDB001
+id: mcdb001
 ns: argo
 pvc: immuno-data-pvc
 size: 2000Gi
@@ -11,11 +11,11 @@ normal-fastq-r1: /data/samples/somatic-exome/Stephen-Aldrich-Normal-Exome_R1.fas
 normal-fastq-r2: /data/samples/somatic-exome/Stephen-Aldrich-Normal-Exome_R2.fastq.gz
 cancer-fastq-r1: /data/samples/cancer-exome/Stephen-Aldrich-Tumor-WES-300X_R1.fastq.gz
 cancer-fastq-r2: /data/samples/cancer-exome/Stephen-Aldrich-Tumor-WES-300X_R2.fastq.gz
-normal-readGroup: "@RG\tID:A\tSM:MCDB002-somatic-exome\tPL:illumina"
-cancer-readGroup: "@RG\tID:A\tSM:MCDB002-cancer-exome\tPL:illumina"
-rna-readGroup: "SM:MCDB002-cancer-rna PL:illumina"
+normal-readGroup: "@RG\tID:A\tSM:mcdb001-somatic-exome\tPL:illumina"
+cancer-readGroup: "@RG\tID:A\tSM:mcdb001-cancer-exome\tPL:illumina"
+rna-readGroup: "SM:mcdb001-cancer-rna PL:illumina"
 genome-reference: /ref-hg38/reference_genome/all_sequences.fa
-bqsr-intervals: "chr1, chr2, chr3, chr4, chr5, chr6, chr7, chr8, chr9, chr10, chr11, chr12, chr13, chr14, chr15, chr16, chr17, chr18, chr19, chr20, chr21, chr22"
+bqsr-intervals: "-L chr1 -L chr2 -L chr3 -L chr4 -L chr5 -L chr6 -L chr7 -L chr8 -L chr9 -L chr10 -L chr11 -L chr12 -L chr13 -L chr14 -L chr15 -L chr16 -L chr17 -L chr18 -L chr19 -L chr20 -L chr21 -L chr22"
 known-indels: /ref-hg38/somatic_inputs/indels.hq.vcf.gz
 dbsnp-vcf: /ref-hg38/somatic_inputs/snvs.hq.vcf.gz
 strand: "first"
@@ -40,8 +40,8 @@ somalier-vcf: /ref-hg38/somatic_inputs/GRC-human-build38_gnomad_exome_common_snp
 exome-interval-list: /ref-hg38/somatic_inputs/intervals/exome.interval_list
 filter-docm-variants: true
 scatter-count: 50
-tumor-sample-name: H_NJ-HCC1395-HCC1395
-normal-sample-name: H_NJ-HCC1395-HCC1395_BL
+tumor-sample-name: mcdb001-cancer-exome
+normal-sample-name: mcdb001-somatic-exome
 docm-vcf: /ref-hg38/somatic_inputs/docm.hq.vcf.gz
 sequence-platform-unit: HJC52BBXX.1
 sequence-platform: illumina
