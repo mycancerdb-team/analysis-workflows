@@ -705,6 +705,8 @@ spec:
       parameters:
       - name: pvc-name
       - name: output-dir
+      - name: service
+      - name: id
       - name: "cpu"
       - name: "mem"
       - name: vcf
@@ -717,6 +719,13 @@ spec:
           claimName: '{{inputs.parameters.pvc-name}}'
     container:
       image: docker.cancerdb.io/mgbio-workflow/rename-sample:1.9
+      env:
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      - name: SERVICE
+        value: "{{inputs.parameters.service}}"
+      - name: ID
+        value: "{{inputs.parameters.id}}"
       command: ['/bin/bash']
       args: ["/root/run_step.sh", "{{inputs.parameters.sample-to-replace}}", "{{inputs.parameters.sample-new-name}}", "{{inputs.parameters.vcf}}"]
       imagePullPolicy: Always
@@ -728,7 +737,7 @@ spec:
     outputs:
       parameters:
         - name: renamed_vcf
-          value: "{{inputs.parameters.vcf}}"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/rename/renamed.{{inputs.parameters.id}}"
   - name: variant-filtration
     inputs:
       parameters:
