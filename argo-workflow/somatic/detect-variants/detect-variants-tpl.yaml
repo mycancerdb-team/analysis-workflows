@@ -581,7 +581,6 @@ spec:
       - name: output-dir
       - name: "cpu"
       - name: "mem"
-      - name: threads
       - name: reference
       - name: vcf
       - name: service
