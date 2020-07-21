@@ -1,9 +1,15 @@
 #!/bin/bash
 
-set -eou pipefail
-basen=`basename "$3"`
-basen="renamed.$basen"
+#ENVVARS
+#OUTPUTDIR
+#SVC
+#ID
 
+set -eou pipefail
+basen="renamed.${ID}"
+
+#make sure we enter the correct dir to obtain outputs.
+pushd "${OUTPUTDIR}/${SVC}/rename"
 #escape spaces, otherwise bcftools will try to use them as a delimiter
 #triple backslash to escape within backticks and then again within sed
 old_name=`echo "$1" | sed 's/ /\\\ /g'`
