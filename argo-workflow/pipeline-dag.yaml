@@ -113,6 +113,37 @@ spec:
         value: '{{inputs.parameters.vault-name}}'
       - name: GENOMIC_PATH
         value: '{{inputs.parameters.s3-gen-dir}}'
+  - name: jsonify-list
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: service #used to define the root subfolder under /data/output i.e. /data/output/pindel
+      - name: list-file # text file row based values
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mcdb-bots/jsonify-list:latest
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      env:
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      - name: SERVICE
+        value: "{{inputs.parameters.service}}"
+      - name: INPUTFILE
+        value: "{{inputs.parameters.list-file}}"
+    outputs:
+      parameters:
+        - name: json_list
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.list-file}}.json"
   - name: fastq-prep-bam
     inputs:
       parameters:
@@ -2602,8 +2633,25 @@ spec:
               value: "{{workflow.parameters.scatter-count}}"
             - name: service
               value: "pindel"
-      - name: pindel-workflow
+      - name: pindel-jsonify-scatter-list
+        template: jsonify-list
         dependencies: [pindel-split-interval-list-to-bed]
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "1"
+            - name: "mem"
+              value: "2Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "pindel"
+            - name: list-file
+              value: "{{tasks.pindel-split-interval-list-to-bed.outputs.parameters.scatter_list}}"
+      - name: pindel-workflow
+        dependencies: [pindel-jsonify-scatter-list]
         templateRef:
           name: immuno-somatic-exome-detect-vars
           template: pindel-workflow
@@ -2633,7 +2681,7 @@ spec:
               value: "ALL"
             - name: working-dir
               value: "{{item}}"
-        withParam: "{{tasks.pindel-split-interval-list-to-bed.outputs.parameters.scatter_list}}"
+        withParam: "{{tasks.pindel-jsonify-scatter-list.outputs.parameters.json_list}}"
       - name: pindel-somatic-filter
         dependencies: [pindel-workflow]
         templateRef:
