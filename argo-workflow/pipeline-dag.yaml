@@ -217,7 +217,7 @@ spec:
               value: "{{workflow.parameters.s3-gen-dir}}"
       - name: fastq-bam-cancer
         template: fastq-prep-bam
-        dependencies: [generate-pvc-data]
+        dependencies: [bootstrap-data]
         arguments:
           parameters:
             - name: pvc-name
@@ -237,14 +237,14 @@ spec:
             - name: data-type
               value: cancer-exome
             - name: platform-unit
-              valuie: "{{workflow.parameters.sequence-platform-unit}}"
+              value: "{{workflow.parameters.sequence-platform-unit}}"
             - name: platform
-              valuie: "{{workflow.parameters.sequence-platform}}"
+              value: "{{workflow.parameters.sequence-platform}}"
             - name: sequence-house
-              valuie: "{{workflow.parameters.sequence-house}}"
+              value: "{{workflow.parameters.sequence-house}}"
       - name: fastq-bam-normal
         template: fastq-prep-bam
-        dependencies: [generate-pvc-data]
+        dependencies: [bootstrap-data]
         arguments:
           parameters:
             - name: pvc-name
@@ -264,14 +264,14 @@ spec:
             - name: data-type
               value: somatic-exome
             - name: platform-unit
-              valuie: "{{workflow.parameters.sequence-platform-unit}}"
+              value: "{{workflow.parameters.sequence-platform-unit}}"
             - name: platform
-              valuie: "{{workflow.parameters.sequence-platform}}"
+              value: "{{workflow.parameters.sequence-platform}}"
             - name: sequence-house
-              valuie: "{{workflow.parameters.sequence-house}}"
+              value: "{{workflow.parameters.sequence-house}}"
       - name: fastq-bam-rna
         template: fastq-prep-bam
-        dependencies: [generate-pvc-data]
+        dependencies: [bootstrap-data]
         arguments:
           parameters:
             - name: pvc-name
@@ -291,11 +291,11 @@ spec:
             - name: data-type
               value: cancer-rna
             - name: platform-unit
-              valuie: "{{workflow.parameters.sequence-platform-unit}}"
+              value: "{{workflow.parameters.sequence-platform-unit}}"
             - name: platform
-              valuie: "{{workflow.parameters.sequence-platform}}"
+              value: "{{workflow.parameters.sequence-platform}}"
             - name: sequence-house
-              valuie: "{{workflow.parameters.sequence-house}}"
+              value: "{{workflow.parameters.sequence-house}}"
 ##Begin RNA-Seq Steps
       - name: rnaq-seq-bam-to-fastq
         dependencies: [fastq-bam-rna]
@@ -312,6 +312,8 @@ spec:
               value: "20Gi"
             - name: id
               value: "{{workflow.parameters.id}}"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
             - name: data-type
               value: rna
             - name: bam-file
@@ -1450,8 +1452,100 @@ spec:
               value: 0 #this is used to prevent subdir creation. Accepts string values.
             - name: vcf
               value: "{{tasks.mutect-merge.outputs.parameters.mutect-merged-vcf}}"
-      - name: mutect-fp-filter
+### Mutect // FP-Filter steps
+## Sanitize vcf FP-Filter steps
+      - name: sanitize-mutect-vcf
         dependencies: [mutect-index-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: vcf-sanitize
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "10Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "mutect"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: vcf
+              value: "{{tasks.mutect-merge.outputs.parameters.mutect-merged-vcf}}"
+## normalize Vars FP-Filter steps
+      - name: normalize-mutect-vcf
+        dependencies: [sanitize-mutect-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: normalize-vars
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "10Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: service
+              value: "mutect"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: vcf
+              value: "{{tasks.sanitize-mutect-vcf.outputs.parameters.sani_vcf_gz}}"
+## decompose vars
+      - name: mutect-decompose
+        dependencies: [normalize-mutect-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: docm-vt-compose
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{{tasks.normalize-mutect-vcf.outputs.parameters.normalized_vcf}}"
+            - name: service
+              value: "mutect"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+## index decomposed_vcf
+      - name: mutect-index-decom-vcf
+        dependencies: [mutect-decompose]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "mutect"
+            - name: data-type
+              value: "decom" #this is used to prevent subdir creation. Accepts string values.
+            - name: vcf
+              value: "{{tasks.mutect-decompose.outputs.parameters.decomposed_vcf}}"
+## Apply FP Filter
+      - name: mutect-fp-filter
+        dependencies: [mutect-index-decom-vcf]
         templateRef:
           name: immuno-somatic-exome-detect-vars
           template: fp-filter
@@ -1470,12 +1564,82 @@ spec:
             - name: service
               value: "mutect"
             - name: vcf
-              value: "{{tasks.mutect-merge.outputs.parameters.mutect-merged-vcf}}"
+              value: "{{tasks.mutect-decompose.outputs.parameters.decomposed_vcf}}"
             - name: reference
               value: "{{workflow.parameters.genome-reference}}"
             - name: cancer-bam
               value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: sample-name
+              value: "{{workflow.parameters.tumor-sample-name}}"
+## BgZip FP
+      - name: bgzip-mutect-fpfilter
+        dependencies: [mutect-fp-filter]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: bgzip
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: input-file
+              value: "{{tasks.mutect-fp-filter.outputs.parameters.filtered_vcf}}"
+## Index FP //output=unfiltered_vcf
+      - name: mutect-index-fp-vcf
+        dependencies: [bgzip-mutect-fpfilter]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "mutect"
+            - name: data-type
+              value: "fpfilter"
+            - name: vcf
+              value: "{{tasks.bgzip-mutect-fpfilter.outputs.parameters.bgzipped_output}}"
+## hard-filter // output=filtered_vcf
+      - name: mutect-hard-filter
+        dependencies: [mutect-index-fp-vcf]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: select-variants
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "mutect"
+            - name: filename
+              value: "final_filter"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: vcf-ref
+              value: "{{workflow.parameters.omni-vcf}}"
+            - name: target-intervals
+              value: "{{workflow.parameters.target-intervals}}"
+###END Mutect // FP-Filter steps
 ## END MUTECT BLOCK
+
 ## BEGIN STRELKA BLOCK
       - name: strelka-workflow
         dependencies: [normal-index-bam,cancer-index-bam]
@@ -1658,6 +1822,10 @@ spec:
               value: 'TUMOR'
             - name: sample-new-name
               value: "{{workflow.parameters.tumor-sample-name}}"
+            - name: service
+              value: "strelka"
+            - name: id
+              value: "{{workflow.parameters.id}}"
       - name: strelka-rename-normal
         dependencies: [strelka-rename-cancer]
         templateRef:
@@ -1674,11 +1842,15 @@ spec:
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: vcf
-              value: "{{tasks.merge-strelka-vcfs.outputs.parameters.merged-vcf}}"
+              value: "{{tasks.strelka-rename-cancer.outputs.parameters.renamed_vcf}}"
             - name: sample-to-replace
               value: 'NORMAL'
             - name: sample-new-name
               value: "{{workflow.parameters.normal-sample-name}}"
+            - name: service
+              value: "strelka"
+            - name: id
+              value: "{{workflow.parameters.id}}"
       - name: index-strelka-vcf
         dependencies: [strelka-rename-normal]
         templateRef:
@@ -1697,7 +1869,7 @@ spec:
             - name: service
               value: "strelka"
             - name: data-type
-              value: 0
+              value: rename
             - name: vcf
               value: "{{tasks.strelka-rename-normal.outputs.parameters.renamed_vcf}}"
       - name: strelka-region-filter
@@ -1725,8 +1897,102 @@ spec:
               value: "{{tasks.strelka-rename-normal.outputs.parameters.renamed_vcf}}"
             - name: target-intervals
               value: "{{workflow.parameters.target-intervals}}"
-      - name: strelka-fp-filter
+## Fp filter workflow
+## Input tasks.strelka-region-filter.outputs.parameters.filtered_vcf
+### Strelka // FP-Filter steps
+## Sanitize vcf FP-Filter steps
+      - name: sanitize-strelka-vcf
         dependencies: [strelka-region-filter]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: vcf-sanitize
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "10Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "strelka"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: vcf
+              value: "{{tasks.strelka-region-filter.outputs.parameters.filtered_vcf}}"
+## normalize Vars FP-Filter steps
+      - name: normalize-strelka-vcf
+        dependencies: [sanitize-strelka-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: normalize-vars
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "10Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: service
+              value: "strelka"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: vcf
+              value: "{{tasks.sanitize-strelka-vcf.outputs.parameters.sani_vcf_gz}}"
+## decompose vars
+      - name: strelka-decompose
+        dependencies: [normalize-strelka-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: docm-vt-compose
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{{tasks.normalize-strelka-vcf.outputs.parameters.normalized_vcf}}"
+            - name: service
+              value: "strelka"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+## index decomposed_vcf
+      - name: strelka-index-decom-vcf
+        dependencies: [strelka-decompose]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "strelka"
+            - name: data-type
+              value: "decom" #this is used to prevent subdir creation. Accepts string values.
+            - name: vcf
+              value: "{{tasks.strelka-decompose.outputs.parameters.decomposed_vcf}}"
+## Apply FP Filter
+      - name: strelka-fp-filter
+        dependencies: [strelka-index-decom-vcf]
         templateRef:
           name: immuno-somatic-exome-detect-vars
           template: fp-filter
@@ -1745,12 +2011,82 @@ spec:
             - name: service
               value: "strelka"
             - name: vcf
-              value: "{{tasks.strelka-region-filter.outputs.parameters.filtered_vcf}}"
+              value: "{{tasks.strelka-decompose.outputs.parameters.decomposed_vcf}}"
             - name: reference
               value: "{{workflow.parameters.genome-reference}}"
             - name: cancer-bam
               value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: sample-name
+              value: "{{workflow.parameters.tumor-sample-name}}"
+## BgZip FP
+      - name: bgzip-strelka-fpfilter
+        dependencies: [strelka-fp-filter]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: bgzip
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: input-file
+              value: "{{tasks.strelka-fp-filter.outputs.parameters.filtered_vcf}}"
+## Index FP //output=unfiltered_vcf
+      - name: strelka-index-fp-vcf
+        dependencies: [bgzip-strelka-fpfilter]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "strelka"
+            - name: data-type
+              value: "fpfilter"
+            - name: vcf
+              value: "{{tasks.bgzip-strelka-fpfilter.outputs.parameters.bgzipped_output}}"
+## hard-filter // output=filtered_vcf
+      - name: strelka-hard-filter
+        dependencies: [strelka-index-fp-vcf]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: select-variants
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "strelka"
+            - name: filename
+              value: "final_filter"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: vcf-ref
+              value: "{{workflow.parameters.omni-vcf}}"
+            - name: target-intervals
+              value: "{{workflow.parameters.target-intervals}}"
+###END Strelka // FP-Filter steps
 ### End Strelka Block
+
 ## Begin Varscan Block
       - name: varscan-int-to-bed
         dependencies: [normal-index-bam,cancer-index-bam]
@@ -1998,6 +2334,10 @@ spec:
               value: "32Gi"
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "varscan"
+            - name: id
+              value: "{{workflow.parameters.id}}"
             - name: vcf
               value: "{{tasks.varscan-merge-all.outputs.parameters.merged-vcf}}"
             - name: sample-to-replace
@@ -2019,6 +2359,10 @@ spec:
               value: "32Gi"
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "varscan"
+            - name: id
+              value: "{{workflow.parameters.id}}"
             - name: vcf
               value: "{{tasks.varscan-rename-cancer.outputs.parameters.renamed_vcf}}"
             - name: sample-to-replace
@@ -2043,11 +2387,105 @@ spec:
             - name: service
               value: "varscan"
             - name: data-type
-              value: 0
+              value: rename
             - name: vcf
               value: "{{tasks.varscan-rename-normal.outputs.parameters.renamed_vcf}}"
-      - name: varscan-fp-filter
+## Fp filter workflow
+## Input tasks.varscan-index-renamed.outputs.parameters.vcf-index
+### Strelka // FP-Filter steps
+## Sanitize vcf FP-Filter steps
+      - name: sanitize-varscan-vcf
         dependencies: [varscan-index-renamed]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: vcf-sanitize
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "10Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "varscan"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: vcf
+              value: "{{tasks.varscan-rename-normal.outputs.parameters.renamed_vcf}}"
+## normalize Vars FP-Filter steps
+      - name: normalize-varscan-vcf
+        dependencies: [sanitize-varscan-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: normalize-vars
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "10Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: service
+              value: "varscan"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: vcf
+              value: "{{tasks.sanitize-varscan-vcf.outputs.parameters.sani_vcf_gz}}"
+## decompose vars
+      - name: varscan-decompose
+        dependencies: [normalize-varscan-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: docm-vt-compose
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{{tasks.normalize-varscan-vcf.outputs.parameters.normalized_vcf}}"
+            - name: service
+              value: "varscan"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+## index decomposed_vcf
+      - name: varscan-index-decom-vcf
+        dependencies: [varscan-decompose]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "varscan"
+            - name: data-type
+              value: "decom" #this is used to prevent subdir creation. Accepts string values.
+            - name: vcf
+              value: "{{tasks.varscan-decompose.outputs.parameters.decomposed_vcf}}"
+## Apply FP Filter
+      - name: varscan-fp-filter
+        dependencies: [varscan-index-decom-vcf]
         templateRef:
           name: immuno-somatic-exome-detect-vars
           template: fp-filter
@@ -2066,12 +2504,82 @@ spec:
             - name: service
               value: "varscan"
             - name: vcf
-              value: "{{tasks.varscan-rename-normal.outputs.parameters.renamed_vcf}}"
+              value: "{{tasks.varscan-decompose.outputs.parameters.decomposed_vcf}}"
             - name: reference
               value: "{{workflow.parameters.genome-reference}}"
             - name: cancer-bam
               value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: sample-name
+              value: "{{workflow.parameters.tumor-sample-name}}"
+## BgZip FP
+      - name: bgzip-varscan-fpfilter
+        dependencies: [varscan-fp-filter]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: bgzip
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: input-file
+              value: "{{tasks.varscan-fp-filter.outputs.parameters.filtered_vcf}}"
+## Index FP //output=unfiltered_vcf
+      - name: varscan-index-fp-vcf
+        dependencies: [bgzip-varscan-fpfilter]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "varscan"
+            - name: data-type
+              value: "fpfilter"
+            - name: vcf
+              value: "{{tasks.bgzip-varscan-fpfilter.outputs.parameters.bgzipped_output}}"
+## hard-filter // output=filtered_vcf
+      - name: varscan-hard-filter
+        dependencies: [varscan-index-fp-vcf]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: select-variants
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "varscan"
+            - name: filename
+              value: "final_filter"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: vcf-ref
+              value: "{{workflow.parameters.omni-vcf}}"
+            - name: target-intervals
+              value: "{{workflow.parameters.target-intervals}}"
+###END Varscan // FP-Filter steps
 ## End Varscan Block
+
 ## Begin Pindel Block
       - name: pindel-split-interval-list-to-bed
         dependencies: [normal-index-bam,cancer-index-bam]
@@ -2089,7 +2597,7 @@ spec:
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: interval-list
-              value: "{{workflow.parameters.bqsr-intervals}}"
+              value: "{{workflow.parameters.exome-interval-list}}"
             - name: scatter-count
               value: "{{workflow.parameters.scatter-count}}"
             - name: service
@@ -2104,9 +2612,9 @@ spec:
             - name: pvc-name
               value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
             - name: "cpu"
-              value: "12"
+              value: "10"
             - name: "mem"
-              value: "32Gi"
+              value: "20Gi"
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: reference
@@ -2123,6 +2631,9 @@ spec:
               value: "{{workflow.parameters.tumor-sample-name}}"
             - name: chromosome
               value: "ALL"
+            - name: working-dir
+              value: "{{item}}"
+        withParam: "{{tasks.pindel-split-interval-list-to-bed.outputs.parameters.scatter_list}}"
       - name: pindel-somatic-filter
         dependencies: [pindel-workflow]
         templateRef:
@@ -2220,8 +2731,102 @@ spec:
               value: 0 #this is used to prevent subdir creation. Accepts string values.
             - name: vcf
               value: "{{tasks.pindel-remove-tags.outputs.parameters.processed_vcf}}"
-      - name: pindel-fp-filter
+## Fp filter workflow
+## Input tasks.pindel-remove-tags.outputs.parameters.processed_vcf
+### Pindel // FP-Filter steps
+## Sanitize vcf FP-Filter steps
+      - name: sanitize-pindel-vcf
         dependencies: [pindel-index-processed-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: vcf-sanitize
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "10Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "pindel"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: vcf
+              value: "{{tasks.pindel-remove-tags.outputs.parameters.processed_vcf}}"
+## normalize Vars FP-Filter steps
+      - name: normalize-pindel-vcf
+        dependencies: [sanitize-pindel-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: normalize-vars
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "10Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: service
+              value: "pindel"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: vcf
+              value: "{{tasks.sanitize-pindel-vcf.outputs.parameters.sani_vcf_gz}}"
+## decompose vars
+      - name: pindel-decompose
+        dependencies: [normalize-pindel-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: docm-vt-compose
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{{tasks.normalize-pindel-vcf.outputs.parameters.normalized_vcf}}"
+            - name: service
+              value: "pindel"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+## index decomposed_vcf
+      - name: pindel-index-decom-vcf
+        dependencies: [pindel-decompose]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "pindel"
+            - name: data-type
+              value: "decom" #this is used to prevent subdir creation. Accepts string values.
+            - name: vcf
+              value: "{{tasks.pindel-decompose.outputs.parameters.decomposed_vcf}}"
+## Apply FP Filter
+      - name: pindel-fp-filter
+        dependencies: [pindel-index-decom-vcf]
         templateRef:
           name: immuno-somatic-exome-detect-vars
           template: fp-filter
@@ -2240,12 +2845,82 @@ spec:
             - name: service
               value: "pindel"
             - name: vcf
-              value: "{{tasks.pindel-remove-tags.outputs.parameters.processed_vcf}}"
+              value: "{{tasks.pindel-decompose.outputs.parameters.decomposed_vcf}}"
             - name: reference
               value: "{{workflow.parameters.genome-reference}}"
             - name: cancer-bam
               value: "{{tasks.cancer-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: sample-name
+              value: "{{workflow.parameters.tumor-sample-name}}"
+## BgZip FP
+      - name: bgzip-pindel-fpfilter
+        dependencies: [pindel-fp-filter]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: bgzip
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: input-file
+              value: "{{tasks.pindel-fp-filter.outputs.parameters.filtered_vcf}}"
+## Index FP //output=unfiltered_vcf
+      - name: pindel-index-fp-vcf
+        dependencies: [bgzip-pindel-fpfilter]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "pindel"
+            - name: data-type
+              value: "fpfilter"
+            - name: vcf
+              value: "{{tasks.bgzip-pindel-fpfilter.outputs.parameters.bgzipped_output}}"
+## hard-filter // output=filtered_vcf
+      - name: pindel-hard-filter
+        dependencies: [pindel-index-fp-vcf]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: select-variants
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "pindel"
+            - name: filename
+              value: "final_filter"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: vcf-ref
+              value: "{{workflow.parameters.omni-vcf}}"
+            - name: target-intervals
+              value: "{{workflow.parameters.target-intervals}}"
+###END Pindel // FP-Filter steps
 ## End Pindel Block
+
 ## Begin DOCM Block
       - name: docm-haplotyper
         dependencies: [normal-index-bam,cancer-index-bam]
@@ -2327,6 +3002,10 @@ spec:
               value: "{{workflow.parameters.output-dir}}"
             - name: vcf
               value: "{{tasks.bgzip-docm-haplotype-vcf.outputs.parameters.bgzipped_output}}"
+            - name: service
+              value: "docm"
+            - name: id
+              value: "{{workflow.parameters.id}}"
       - name: docm-filter
         dependencies: [docm-decompose]
         templateRef:
