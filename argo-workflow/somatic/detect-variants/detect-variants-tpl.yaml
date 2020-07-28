@@ -722,10 +722,12 @@ spec:
       env:
       - name: OUTPUTDIR
         value: "{{inputs.parameters.output-dir}}"
-      - name: SERVICE
+      - name: SVC
         value: "{{inputs.parameters.service}}"
       - name: ID
         value: "{{inputs.parameters.id}}"
+      - name: SAMPLEID
+        value: "{{inputs.parameters.sample-new-name}}"
       command: ['/bin/bash']
       args: ["/root/run_step.sh", "{{inputs.parameters.sample-to-replace}}", "{{inputs.parameters.sample-new-name}}", "{{inputs.parameters.vcf}}"]
       imagePullPolicy: Always
@@ -737,7 +739,7 @@ spec:
     outputs:
       parameters:
         - name: renamed_vcf
-          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/rename/renamed.{{inputs.parameters.id}}"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/rename/renamed_{{inputs.parameters.sample-new-name}}.vcf.gz"
   - name: variant-filtration
     inputs:
       parameters:

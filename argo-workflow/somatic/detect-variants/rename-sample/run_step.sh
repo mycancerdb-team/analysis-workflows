@@ -4,9 +4,10 @@
 #OUTPUTDIR
 #SVC
 #ID
+#SAMPLEID
 
 set -eou pipefail
-basen="renamed.${ID}"
+basen="renamed_${SAMPLEID}.vcf.gz"
 
 #make sure we enter the correct dir to obtain outputs.
 pushd "${OUTPUTDIR}/${SVC}/rename"
