@@ -6,4 +6,4 @@
 ##SERVICE
 
 
-cat ${INPUTFILE}  | jq  --raw-input .  | jq --slurp . > "${OUTPUTDIR}/${SERVICE}/${INPUTFILE}.json"
+cat ${INPUTFILE}  | jq  --raw-input .  | jq --slurp . > "${INPUTFILE}.json"
