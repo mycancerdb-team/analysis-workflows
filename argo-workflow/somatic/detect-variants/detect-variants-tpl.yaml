@@ -296,7 +296,6 @@ spec:
       - name: insert-size
       - name: cancer-sample-name
       - name: normal-sample-name
-      - name: working-dir
       - name: chromosome
       - name: reference
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
@@ -323,8 +322,6 @@ spec:
         value: "{{inputs.parameters.chromosome}}"
       - name: OUTPUTDIR
         value: "{{inputs.parameters.output-dir}}"
-      - name: WRKNGDIR
-        value: "{{inputs.parameters.working-dir}}"
       command: ['/root/exec_step.sh']
       imagePullPolicy: Always
       volumeMounts:
