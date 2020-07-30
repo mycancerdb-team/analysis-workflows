@@ -1,0 +1,455 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: immuno-somatic-exome-detect-vars-pp
+spec:
+  volumes:
+    - name: pvc-reference
+      persistentVolumeClaim:
+        claimName: workflow-ref-hg38-dev #### This is subject to change.
+  imagePullSecrets:
+    - name: mgbio-cred
+    - name: mcdb-bot
+  templates:
+  - name: combine-variants
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: id
+      - name: reference
+      - name: mutect-vcf
+      - name: varscan-vcf
+      - name: strelka-vcf
+      - name: pindel-vcf
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/gatk-cwl:3.6.0
+      command: ['/usr/bin/java']
+      args: ["-Xmx8g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "CombineVariants", "-genotypeMergeOptions", "PRIORITIZE", "--rod_priority_list", "mutect,varscan,strelka,pindel", "-o", "{{inputs.parameters.output-dir}}/detect-variants/{{inputs.parameters.id}}_combined.vcf.gz", "-R", "{{inputs.parameters.reference}}", "--variant:mutect", "{{inputs.parameters.mutect-vcf}}", "--variant:varscan", "{{inputs.parameters.varscan-vcf}}", "--variant:strelka", "{{inputs.parameters.strelka-vcf}}", "--variant:pindel", "{{inputs.parameters.pindel-vcf}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: combined_vcf
+          value: "{{inputs.parameters.output-dir}}/detect-variants/{{inputs.parameters.id}}_combined.vcf.gz"
+  - name: add-docm-variants
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: reference
+      - name: callers-vcf
+      - name: docm-vcf
+      - name: id
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/gatk-cwl:3.6.0
+      command: ['/usr/bin/java']
+      args: ["-Xmx8g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "CombineVariants", "-genotypeMergeOptions", "PRIORITIZE", "--rod_priority_list", "callers,docm", "--setKey", "null", "-o", "{{inputs.parameters.output-dir}}/detect-variants/{{inputs.parameters.id}}_docm_merged.vcf.gz", "-R", "{{inputs.parameters.reference}}", "--variant:callers", "{{inputs.parameters.callers-vcf}}", "--variant:docm", "{{inputs.parameters.docm-vcf}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: merged_vcf
+          value: "{{inputs.parameters.output-dir}}/detect-variants/{{inputs.parameters.id}}_docm_merged.vcf.gz"
+  - name: vep-annotation
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: vcf
+      - name: id
+      - name: cache-dir
+      - name: ensembl-assembly
+      - name: ensembl-version
+      - name: ensembl-species
+      - name: synonyms-file
+      - name: coding-only
+      - name: reference
+      - name: pick
+      - name: custom-annotations
+      - name: plugins
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/vep_helper-cwl:1.1.0
+      command: ['/usr/bin/perl']
+      args: ["-I", "/opt/lib/perl/VEP/Plugins", "/usr/bin/variant_effect_predictor.pl", "-i", "{{inputs.parameters.vcf}}", "--dir", "{{inputs.parameters.cache-dir}}", "--synonyms", "{{inputs.parameters.synonyms-file}}", "--coding-only", "{{inputs.parameters.coding-only}}", "--{{inputs.parameters.pick}}", "--fasta", "{{inputs.parameters.reference}}", "--plugin", "{{inputs.parameters.plugins}}", "--everything", "true", "--assembly", "{{inputs.parameters.ensembl-assembly}}", "--cache_version", "{{inputs.parameters.ensembl-version}}", "--species", "{{inputs.parameters.ensembl-species}}", "--format", "vcf", "--vcf", "--fork", "4", "--term", "SO", "--transcript_version", "--offline", "--cache", "--symbol", "-o",  "{{inputs.parameters.output-dir}}/detect-variants/{{inputs.parameters.id}}_annotated.vcf"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: annotated_vcf
+          value: "{{inputs.parameters.output-dir}}/detect-variants/{{inputs.parameters.id}}_annotated.vcf"
+        - name: vep_summary
+          value: "{{inputs.parameters.output-dir}}/detect-variants/{{inputs.parameters.id}}_annotated.vcf_summary.html"
+#  - name: bam-readcount
+#    inputs:
+#      parameters:
+#      - name: pvc-name
+#      - name: output-dir
+#      - name: "cpu"
+#      - name: "mem"
+#      - name: vcf
+#      - name: sample-name
+#      - name: reference
+#      - name: bam
+#      - name: min-base-quality
+#      - name: min-mapping-quality
+#      - name: prefix
+#      - name: id
+#    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+#    volumes:
+#      - name: '{{inputs.parameters.pvc-name}}'
+#        persistentVolumeClaim:
+#          claimName: '{{inputs.parameters.pvc-name}}'
+#    container:
+#      image: docker.cancerdb.io/mgbio-workflow/bam-readcount:1.1.1
+#      command: ['/usr/bin/python']
+#      args: ["/root/run_step.py", "{{inputs.parameters.vcf}}", "{{inputs.parameters.sample-name}}", "{{inputs.parameters.reference}}", "{{inputs.parameters.bam}}", "{{inputs.parameters.prefix}}", "{{inputs.parameters.output-dir}}/detect-variants", "{{inputs.parameters.min-base-quality}}", "{{inputs.parameters.min-mapping-quality}}"]
+#      imagePullPolicy: Always
+#      volumeMounts:
+#      - name: '{{inputs.parameters.pvc-name}}'
+#        mountPath: /data
+#      - name: pvc-reference
+#        mountPath: /ref-hg38
+#    outputs:
+#      parameters:
+#        - name: snv_bam_readcount_tsv
+#          value: ###
+#        - name: indel_bam_readcount_tsv
+#          value: ###
+  - name: vcf-readcount
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: vcf
+      - name: bam-readcount-tsv
+      - name: data-type
+      - name: sample-name
+      - name: variant-type
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: griffithlab/vatools:3.1.0
+      command: ['vcf-readcount-annotator']
+      args: ["{{inputs.parameters.vcf}}", "{{inputs.parameters.bam-readcount-tsv}}", "{{inputs.parameters.data-type}}", "-t", "{{inputs.parameters.variant-type}}", "-s", "{{inputs.parameters.sample-name}}", "-o", "{{inputs.parameters.output-dir}}/detect-variants/annotated.bam_readcount.vcf.gz"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: annotated_bam_readcount_vcf
+          value: "{{inputs.parameters.output-dir}}/detect-variants/annotated.bam_readcount.vcf.gz"
+  - name: variants-to-table
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: reference
+      - name: vcf
+      - name: fields
+      - name: genotype-fields
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: "mgibio/gatk-cwl:3.6.0"
+      command: ['/usr/bin/java']
+      args: ["-Xmx4g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "VariantsToTable", "-R", "{{inputs.parameters.reference}}", "--variant", "{{inputs.parameters.vcf}}", "-F", "{{inputs.parameters.fields}}", "-GF", "{{inputs.parameters.genotype-fields}}", "--allowMissingData", "-o", "{{inputs.parameters.output-dir}}/detect-variants/variants.tsv"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: variants_tsv
+          value: "{{inputs.parameters.output-dir}}/detect-variants/variants.tsv"
+  - name: vep-annotation-reporter
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: vcf
+      - name: vep-fields
+      - name: variants-tsv
+      - name: id
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: griffithlab/vatools:3.1.0
+      command: ['vep-annotation-reporter']
+      args: ["{{inputs.parameters.vcf}}", "{{inputs.parameters.vep-fields}}", "-t", "{{inputs.parameters.variants-tsv}}", "{{inputs.parameters.id}}", "-o", "{{inputs.parameters.output-dir}}/detect-variants/{{inputs.parameters.id}}.annotated.tsv"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: annotated_variants_tsv
+          value: "{{inputs.parameters.output-dir}}/detect-variants/{{inputs.parameters.id}}.annotated.tsv"
+###filter-vcf-somatic block
+  - name: filter-known-variants
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: vcf
+      - name: known-variants
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/bcftools-cwl:1.9
+      command: ['/opt/bcftools/bin/bcftools']
+      args: ["annotate",  "-Oz", "-o", "{{inputs.parameters.output-dir}}/detect-variants/known_variants_filtered.vcf.gz", "-a", "{{inputs.parameters.known-variants}}", "-m", "PREVIOUSLY_DISCOVERED", "{{inputs.parameters.vcf}}" ]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: known_filtered
+          value: "{{inputs.parameters.output-dir}}/detect-variants/known_variants_filtered.vcf.gz"
+  - name: filter-vcf-custom-allele-freq
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: vcf
+      - name: maximum-population-allele-freq
+      - name: field-name
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/vep_helper-cwl:1.1.0
+      command: ['/usr/bin/perl']
+      args: ["/usr/bin/vcf_check.pl", "{{inputs.parameters.vcf}}", "{{inputs.parameters.output-dir}}/detect-variants/annotated.af_filtered.vcf", "/usr/bin/perl", "/opt/vep/src/ensembl-vep/filter_vep", "--format", "vcf", "-o", "{{inputs.parameters.output-dir}}/detect-variants/annotated.af_filtered.vcf", "-i", "{{inputs.parameters.vcf}}", "--filter", "{{inputs.parameters.maximum-population-allele-freq}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: filtered_vcf
+          value: "{{inputs.parameters.output-dir}}/detect-variants/annotated.af_filtered.vcf"
+  - name: filter-vcf-mapq0
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: vcf
+      - name: cancer-bam
+      - name: threshold
+      - name: reference
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/mapq0-filter:v0.3.1
+      command: ['/bin/bash']
+      args: ["/usr/bin/mapq0_vcf_filter.sh", "{{inputs.parameters.output-dir}}/detect-variants/mapq_filtered.vcf.gz", "{{inputs.parameters.vcf}}", "{{inputs.parameters.cancer-bam}}", "{{inputs.parameters.reference}}", "{{inputs.parameters.threshold}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: mapq0_filtered_vcf
+          value: "{{inputs.parameters.output-dir}}/detect-variants/mapq_filtered.vcf.gz"
+  - name: filter-vcf-cle
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: vcf
+      - name: filter
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/cle:v1.3.1
+      command: ['/usr/bin/perl']
+      args: ["/usr/bin/docm_and_coding_indel_selection.pl", "{{inputs.parameters.vcf}}", "{{inputs.parameters.filter}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: cle_filtered_vcf
+          value: "{{inputs.parameters.output-dir}}/detect-variants/annotated_filtered.vcf"
+  - name: filter-vcf-depth
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: vcf
+      - name: min-depth
+      - name: normal-sample-name
+      - name: cancer-sample-name
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image:  mgibio/depth-filter:0.1.2
+      command: ['/opt/conda/bin/python3']
+      args: ["/usr/bin/depth_filter.py", "--minimum_depth", "{{inputs.parameters.min-depth}}", "{{inputs.parameters.vcf}}", "{{inputs.parameters.normal-sample-name}},{{inputs.parameters.cancer-sample-name}}", "{{inputs.parameters.output-dir}}/detect-variants/depth_filtered.vcf"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: depth_filtered_vcf
+          value: "{{inputs.parameters.output-dir}}/detect-variants/depth_filtered.vcf"
+  - name: filter-vcf-somatic-llr
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: vcf
+      - name: threshold
+      - name: id
+      - name: normal-sample-name
+      - name: cancer-sample-name
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image:  mgibio/somatic-llr-filter:v0.4.3
+      command: ['/opt/conda/bin/python3']
+      args: ["/usr/bin/somatic_llr_filter.py", "--overwrite", "--tumor-sample-name", "{{inputs.parameters.cancer-sample-name}}", "--normal-sample-name", "{{inputs.parameters.normal-sample-name}}", "--llr-threshold", "{{inputs.parameters.threshold}}", "{{inputs.parameters.vcf}}", "{{inputs.parameters.output-dir}}/detect-variants/{{inputs.parameters.id}}_final.vcf"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: somatic_llr_filtered_vcf
+          value: "{{inputs.parameters.output-dir}}/detect-variants/{{inputs.parameters.id}}_final.vcf"
+
+###END filter-vcf-somatic block
+
+  #- name: ###
+  #  inputs:
+  #    parameters:
+  #    - name: pvc-name
+  #    - name: output-dir
+  #    - name: "cpu"
+  #    - name: "mem"
+  #    - name: threads
+  #    - name: ###
+  #    - name: ###
+  #    - name: ###
+  #  podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+  #  volumes:
+  #    - name: '{{inputs.parameters.pvc-name}}'
+  #      persistentVolumeClaim:
+  #        claimName: '{{inputs.parameters.pvc-name}}'
+  #  container:
+  #    image: ##### docker.cancerdb.io/mgbio-workflow/
+  #    env:
+  #    - name: ###
+  #      value: ###
+  #    command: ['###']
+  #    args: ["###"]
+  #    imagePullPolicy: Always
+  #    volumeMounts:
+  #    - name: '{{inputs.parameters.pvc-name}}'
+  #      mountPath: /data
+  #    - name: pvc-reference
+  #      mountPath: /ref-hg38
+  #  outputs:
+  #    parameters:
+  #      - name: ###
+  #        value: ###
