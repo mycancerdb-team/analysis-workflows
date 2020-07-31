@@ -21,7 +21,7 @@ for d in ${OUTPUTDIR}/pindel/split-beds/*/; do printf "${d}\n" >> /root/scatter_
 pwrkflw () {
   echo -n "$NORMALBAM $CANCERBAM $INSRTSIZE $NORMALNAME $CANCERNAME -f $REF -c $CHROMO -j ${1}scattered.bed"
   pushd $1 && /usr/bin/perl /root/run_step.pl $NORMALBAM $CANCERBAM $INSRTSIZE $NORMALNAME $CANCERNAME -f $REF -c $CHROMO -j "${1}scattered.bed"
-  export WRKDIR=$1 && /root/cat-out.sh "${1}all_D" "${1}all_SI" "${1}all_TD" "${1}all_LI" "${1}all_INV" && popd;
+  export WRKDIR=$1 && /root/cat-out.sh "${1}all_INV" "${1}all_TD" "${1}all_D" "${1}all_SI"  "${1}all_LI"  && popd;
 }
 export -f pwrkflw
 ##
@@ -31,7 +31,7 @@ export -f pwrkflw
 
 # Invoke pindel function forked and parallelized, wait for all instances to complete before moving on
 while read p; do
-  sem -j 10 -k "pwrkflw ${p}"
+  sem -j 25 -k "pwrkflw ${p}"
 done </root/scatter_list.txt
 sem --wait
 
