@@ -168,7 +168,7 @@ spec:
     container:
       image: griffithlab/vatools:3.1.0
       command: ['vcf-readcount-annotator']
-      args: ["{{inputs.parameters.vcf}}", "{{inputs.parameters.bam-readcount-tsv}}", "{{inputs.parameters.data-type}}", "-t", "{{inputs.parameters.variant-type}}", "-s", "{{inputs.parameters.sample-name}}", "-o", "{{inputs.parameters.output-dir}}/detect-variants/readcount/annotated.bam_readcount.vcf.gz"]
+      args: ["{{inputs.parameters.vcf}}", "{{inputs.parameters.bam-readcount-tsv}}", "{{inputs.parameters.data-type}}", "-t", "{{inputs.parameters.variant-type}}", "-s", "{{inputs.parameters.sample-name}}", "-o", "{{inputs.parameters.output-dir}}/detect-variants/readcount/{{inputs.parameters.variant-type}}_{{inputs.parameters.sample-name}}_annotated.bam_readcount.vcf.gz"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -178,7 +178,7 @@ spec:
     outputs:
       parameters:
         - name: annotated_bam_readcount_vcf
-          value: "{{inputs.parameters.output-dir}}/detect-variants/readcount/annotated.bam_readcount.vcf.gz"
+          value: "{{inputs.parameters.output-dir}}/detect-variants/readcount/{{inputs.parameters.variant-type}}_{{inputs.parameters.sample-name}}_annotated.bam_readcount.vcf.gz"
   - name: variants-to-table
     inputs:
       parameters:
@@ -248,7 +248,7 @@ spec:
       - name: "cpu"
       - name: "mem"
       - name: vcf
-      - name: known-variants
+      #- name: known-variants
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -257,7 +257,7 @@ spec:
     container:
       image: mgibio/bcftools-cwl:1.9
       command: ['/opt/bcftools/bin/bcftools']
-      args: ["annotate",  "-Oz", "-o", "{{inputs.parameters.output-dir}}/detect-variants/known_variants_filtered.vcf.gz", "-a", "{{inputs.parameters.known-variants}}", "-m", "PREVIOUSLY_DISCOVERED", "{{inputs.parameters.vcf}}" ]
+      args: ["annotate",  "-Oz", "-o", "{{inputs.parameters.output-dir}}/detect-variants/known_variants_filtered.vcf.gz", "{{inputs.parameters.vcf}}" ] #"-a", "{{inputs.parameters.known-variants}}", "-m", "PREVIOUSLY_DISCOVERED",
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
