@@ -11,7 +11,7 @@ my ($strelka_vcf, $outdir) = @ARGV;
 open(my $strelka_vcf_fh, '-|', '/bin/gunzip', '-c', $strelka_vcf)
     or die("couldn't open $strelka_vcf to read");
 open(my $add_gt_fh, ">", "$outdir/add_gt.vcf")
-    or die("couldn't open $outdir/add_gt.vcf for write");
+    or die("couldn't open add_gt.vcf for write");
 
 while (<$strelka_vcf_fh>) {
     chomp;
