@@ -9,4 +9,4 @@ set -o nounset
 
 pushd $OUTPUTDIR/varscan/variants
 
-java -jar /opt/varscan/VarScan.jar processSomatic $VCF --max-normal-freq $MAXNRMLFRQ
+java -jar /opt/varscan/VarScan.jar processSomatic $VCF #--max-normal-freq $MAXNRMLFRQ
