@@ -31,7 +31,7 @@ export -f pwrkflw
 
 # Invoke pindel function forked and parallelized, wait for all instances to complete before moving on
 while read p; do
-  sem -j 15 -k "pwrkflw ${p}"
+  sem -j 20 -k "pwrkflw ${p}"
 done </root/scatter_list.txt
 sem --wait
 

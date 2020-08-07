@@ -1,5 +1,5 @@
 FROM mgibio/cle:v1.4.2
-#docker.cancerdb.io/mgbio-workflow/pindel:1.4.2
+#docker.cancerdb.io/mgbio-workflow/pindel:1.4.3
 
 RUN apt update && apt install parallel -y
 
