@@ -46,3 +46,9 @@ docm-vcf: /ref-hg38/somatic_inputs/docm.hq.vcf.gz
 sequence-platform-unit: HJC52BBXX.1
 sequence-platform: illumina
 sequence-house: Psomagen
+vep-cache-dir: /ref-hg38/VEP/VEP_cache
+vep-ensembl-version: 95
+vep-ensembl-assembly: GRCh38
+vep-ensembl-species: homo_sapiens
+vep-syn-file: /ref-hg38/VEP/chromAlias.ensembl.txt
+vep-custom-annotation: /ref-hg38/VEP/fixed_b38_exome.vcf.gz
