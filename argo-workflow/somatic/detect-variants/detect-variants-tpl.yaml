@@ -208,7 +208,7 @@ spec:
       - name: "mem"
       - name: vcf
       - name: data-type
-      - name: max-normal-freq
+      #- name: max-normal-freq
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -221,8 +221,10 @@ spec:
         value: "{{inputs.parameters.vcf}}"
       - name: OUTPUTDIR
         value: "{{inputs.parameters.output-dir}}"
-      - name: MAXNRMLFRQ
-        value: "{{inputs.parameters.max-normal-freq}}"
+      - name: DATATYPE
+        value: "{{inputs.parameters.data-type}}"
+      #- name: MAXNRMLFRQ
+      #  value: "{{inputs.parameters.max-normal-freq}}"
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
