@@ -286,6 +286,36 @@ spec:
           value: "{{inputs.parameters.hc-indels-vcf}}.gz"
 ##END VARSCAN BLOCK
 ##BEGIN PINDEL BLOCK
+##Pindel split list
+  - name: pindel-split-list
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: "cpu"
+      - name: "mem"
+      - name: output-dir
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/pindel-split:1.4.3
+      command: ['/root/run_step.sh']
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: full_list
+          value: "{{inputs.parameters.output-dir}}/pindel/scatter_list.txt"
+        - name: head_list
+          value: "{{inputs.parameters.output-dir}}/pindel/head_list.txt"
+        - name: tail_list
+          value: "{{inputs.parameters.output-dir}}/pindel/tail_list.txt"
   - name: pindel-workflow
     inputs:
       parameters:
@@ -300,6 +330,7 @@ spec:
       - name: normal-sample-name
       - name: chromosome
       - name: reference
+      - name: scatter-list
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -324,7 +355,32 @@ spec:
         value: "{{inputs.parameters.chromosome}}"
       - name: OUTPUTDIR
         value: "{{inputs.parameters.output-dir}}"
+      - name: SCTTRLIST
+        value: "{{inputs.parameters.scatter-list}}"
       command: ['/root/exec_step.sh']
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+##Pindel cat-all
+  - name: pindel-cat-all
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: "cpu"
+      - name: "mem"
+      - name: output-dir
+      - name: scatter-list
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/pindel-cat-all:1.4.3
+      command: ['/root/run_step.sh']
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
