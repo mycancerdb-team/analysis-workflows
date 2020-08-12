@@ -301,6 +301,9 @@ spec:
           claimName: '{{inputs.parameters.pvc-name}}'
     container:
       image: docker.cancerdb.io/mgbio-workflow/pindel-split:1.4.3
+      env:
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
       command: ['/root/run_step.sh']
       imagePullPolicy: Always
       volumeMounts:
@@ -380,6 +383,11 @@ spec:
           claimName: '{{inputs.parameters.pvc-name}}'
     container:
       image: docker.cancerdb.io/mgbio-workflow/pindel-cat-all:1.4.3
+      env:
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      - name: SCTTRLIST
+        value: "{{inputs.parameters.scatter-list}}"
       command: ['/root/run_step.sh']
       imagePullPolicy: Always
       volumeMounts:

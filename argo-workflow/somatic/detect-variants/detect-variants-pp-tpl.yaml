@@ -208,7 +208,7 @@ spec:
     outputs:
       parameters:
         - name: variants_tsv
-          value: "{{inputs.parameters.output-dir}}/detect-variants/variants.tsv"
+          value: "{{inputs.parameters.output-dir}}/detect-variants/final/variants.tsv"
   - name: vep-annotation-reporter
     inputs:
       parameters:
@@ -334,7 +334,7 @@ spec:
       - name: "cpu"
       - name: "mem"
       - name: vcf
-      - name: filter
+      #- name: filter
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -343,7 +343,7 @@ spec:
     container:
       image: mgibio/cle:v1.3.1
       command: ['/usr/bin/perl']
-      args: ["/usr/bin/docm_and_coding_indel_selection.pl", "{{inputs.parameters.vcf}}", "{{inputs.parameters.filter}}"]
+      args: ["/usr/bin/docm_and_coding_indel_selection.pl", "{{inputs.parameters.vcf}}", "{{inputs.parameters.output-dir}}/detect-variants"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -404,7 +404,7 @@ spec:
     container:
       image:  mgibio/somatic-llr-filter:v0.4.3
       command: ['/opt/conda/bin/python3']
-      args: ["/usr/bin/somatic_llr_filter.py", "--overwrite", "--tumor-sample-name", "{{inputs.parameters.cancer-sample-name}}", "--normal-sample-name", "{{inputs.parameters.normal-sample-name}}", "--llr-threshold", "{{inputs.parameters.threshold}}", "{{inputs.parameters.vcf}}", "{{inputs.parameters.output-dir}}/detect-variants/{{inputs.parameters.id}}_final.vcf"]
+      args: ["/usr/bin/somatic_llr_filter.py", "--overwrite", "--tumor-sample-name", "{{inputs.parameters.cancer-sample-name}}", "--normal-sample-name", "{{inputs.parameters.normal-sample-name}}", "--llr-threshold", "{{inputs.parameters.threshold}}", "{{inputs.parameters.vcf}}", "{{inputs.parameters.output-dir}}/detect-variants/final/{{inputs.parameters.id}}_final.vcf"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -414,9 +414,7 @@ spec:
     outputs:
       parameters:
         - name: somatic_llr_filtered_vcf
-          value: "{{inputs.parameters.output-dir}}/detect-variants/{{inputs.parameters.id}}_final.vcf"
-
-###END filter-vcf-somatic block
+          value: "{{inputs.parameters.output-dir}}/detect-variants/final/{{inputs.parameters.id}}_final.vcf"
 
   #- name: ###
   #  inputs:
