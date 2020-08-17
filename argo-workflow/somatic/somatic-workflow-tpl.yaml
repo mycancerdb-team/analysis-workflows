@@ -479,64 +479,166 @@ spec:
           value: "{{inputs.parameters.output-dir}}/final/concordance.somalier.pairs.tsv"
         - name: somalier_samples
           value: "{{inputs.parameters.output-dir}}/final/concordance.somalier.samples.tsv"
-#  - name: cnv-kit
-#    inputs:
-#      parameters:
-#      - name: pvc-name
-#      - name: output-dir
-#      - name: "cpu"
-#      - name: "mem"
-#      - name: cancer-bam
-#      - name: normal-bam
-#      - name: bait-intervals #bedfile ## Need to make sure is in place. # Need to clarify again the difference between files and which one is baits.bed
-#      - name: reference
-#      - name: method
-#    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
-#    volumes:
-#      - name: '{{inputs.parameters.pvc-name}}'
-#        persistentVolumeClaim:
-#          claimName: '{{inputs.parameters.pvc-name}}'
-#    container:
-#      image: etal/cnvkit:0.9.5
-#      command: ['/usr/bin/python']
-#      args: ["/usr/local/bin/cnvkit.py", "batch", "{{inputs.parameters.cancer-bam}}", "--normal", "{{inputs.parameters.normal-bam}}", "--targets", "{{inputs.parameters.bait-intervals}}", "--fasta", "{{inputs.parameters.reference}}", "--method", "hybrid", "--diagram", "--scatter", "--output-dir", "{{inputs.parameters.output-dir}}/cnvkit"]
-#      imagePullPolicy: Always
-#      volumeMounts:
-#      - name: '{{inputs.parameters.pvc-name}}'
-#        mountPath: /data
-#      - name: pvc-reference
-#        mountPath: /ref-hg38
-#    outputs:
-#      parameters:
-#        - name: intervals_antitarget
-#          value: ###
-#        - name: intervals_target
-#          value: ###
-#        - name: normal_antitarget_coverage
-#          value: ###
-#        - name: normal_target_coverage
-#          value: ###
-#        - name: reference_coverage
-#          value: ###
-#        - name: cn_diagram
-#          value: ###
-#        - name: cn_scatter_plot
-#          value: ###
-#        - name: tumor_antitarget_coverage
-#          value: ###
-#        - name: ###
-#          value: ###
-#        - name: ###
-#          value: ###
-#        - name: ###
-#          value: ###
-
+  - name: cnv-kit
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: id
+      - name: cancer-bam
+      - name: normal-bam
+      - name: bait-intervals
+      - name: reference
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: etal/cnvkit:0.9.5
+      command: ['/usr/bin/python']
+      args: ["/usr/local/bin/cnvkit.py", "batch", "{{inputs.parameters.cancer-bam}}", "--normal", "{{inputs.parameters.normal-bam}}", "--targets", "{{inputs.parameters.bait-intervals}}", "--fasta", "{{inputs.parameters.reference}}", "--method", "hybrid", "--output-dir", "{{inputs.parameters.output-dir}}/cnvkit"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: intervals_antitarget
+          value: "{{inputs.parameters.output-dir}}/cnvkit/bait.antitarget.bed"
+        - name: intervals_target
+          value:  "{{inputs.parameters.output-dir}}/cnvkit/bait.target.bed"
+        - name: normal_antitarget_coverage
+          value: "{{inputs.parameters.output-dir}}/cnvkit/normal_{{inputs.parameters.id}}.antitargetcoverage.cnn"
+        - name: normal_target_coverage
+          value: "{{inputs.parameters.output-dir}}/cnvkit/normal_{{inputs.parameters.id}}.targetcoverage.cnn"
+        - name: reference_coverage
+          value: "{{inputs.parameters.output-dir}}/cnvkit/reference.cnn"
+        #- name: cn_diagram
+        #  value: "{{inputs.parameters.output-dir}}/cnvkit/"
+        #- name: cn_scatter_plot
+        #  value: "{{inputs.parameters.output-dir}}/cnvkit/"
+        - name: tumor_antitarget_coverage
+          value: "{{inputs.parameters.output-dir}}/cnvkit/cancer_{{inputs.parameters.id}}.antitargetcoverage.cnn"
+        - name: tumor_target-coverage
+          value: "{{inputs.parameters.output-dir}}/cnvkit/cancer_{{inputs.parameters.id}}.targetcoverage.cnn"
+        - name: tumor_bin_level_ratios
+          value: "{{inputs.parameters.output-dir}}/cnvkit/cancer_{{inputs.parameters.id}}.cnr"
+        - name: tumor_segmented_ratios
+          value: "{{inputs.parameters.output-dir}}/cnvkit/cancer_{{inputs.parameters.id}}.cns"
 #manta_somatic
+  - name: manta-somatic
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: cancer-bam
+      - name: normal-bam
+      - name: reference
+      #- name: call-regions
+      #- name: non-wgs
+      #- name: output-contigs
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/manta:1.5.0
+      env:
+      - name: REFGENOME
+        value: "{{inputs.parameters.reference}}"
+      - name: CANCERBAM
+        value: "{{inputs.parameters.cancer-bam}}"
+      - name: NORMALBAM
+        value: "{{inputs.parameters.normal-bam}}"
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      command: ['/root/run_step.sh']
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: diploid_variants
+          value: "{{inputs.parameters.output-dir}}/manta/MantaWorkflow/results/variants/diploidSV.vcf.gz"
+        - name: somatic_variants
+          value: "{{inputs.parameters.output-dir}}/manta/MantaWorkflow/results/variants/somaticSV.vcf.gz"
+        - name: all_candidates
+          value: "{{inputs.parameters.output-dir}}/manta/MantaWorkflow/results/variants/candidateSV.vcf.gz"
+        - name: small_candidates
+          value: "{{inputs.parameters.output-dir}}/manta/MantaWorkflow/results/variants/candidateSmallIndels.vcf.gz"
+        - name: tumor_only_variants
+          value: "{{inputs.parameters.output-dir}}/manta/MantaWorkflow/results/variants/tumorSV.vcf.gz"
 #bam_to_cram
+  - name: bam-to-cram
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: reference
+      - name: bam
+      - name: service
+      - name: id
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/samtools-cwl:1.0.0
+      workingDir: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}_final"
+      command: ['/opt/samtools/bin/samtools']
+      args: ["view", "-C", "-T", "{{inputs.parameters.reference}}", "{{inputs.parameters.bam}}", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}_final/{{inputs.parameters.service}}_{{inputs.parameters.id}}.cram"] ## need to convert to script with popd
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: crammed-bam
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}_final/{{inputs.parameters.service}}_{{inputs.parameters.id}}.cram"
 #index_cram
-
-
-
+  - name: index-cram
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: cram
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/samtools-cwl:1.0.0
+      command: ['/opt/samtools/bin/samtools']
+      args: ["index", "{{inputs.parameters.cram}}", "{{inputs.parameters.cram}}.crai"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: indexed-cram
+          value: "{{inputs.parameters.cram}}.crai"
   #- name: ###
   #  inputs:
   #    parameters:
