@@ -198,7 +198,7 @@ spec:
     container:
       image: "mgibio/gatk-cwl:3.6.0"
       command: ['/usr/bin/java']
-      args: ["-Xmx4g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "VariantsToTable", "-R", "{{inputs.parameters.reference}}", "--variant", "{{inputs.parameters.vcf}}", "-F", "{{inputs.parameters.fields}}", "-GF", "{{inputs.parameters.genotype-fields}}", "--allowMissingData", "-o", "{{inputs.parameters.output-dir}}/detect-variants/variants.tsv"]
+      args: ["-Xmx4g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "VariantsToTable", "-R", "{{inputs.parameters.reference}}", "--variant", "{{inputs.parameters.vcf}}", "{{inputs.parameters.fields}}", "{{inputs.parameters.genotype-fields}}", "--allowMissingData", "-o", "{{inputs.parameters.output-dir}}/detect-variants/final/variants.tsv"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -228,7 +228,7 @@ spec:
     container:
       image: griffithlab/vatools:3.1.0
       command: ['vep-annotation-reporter']
-      args: ["{{inputs.parameters.vcf}}", "{{inputs.parameters.vep-fields}}", "-t", "{{inputs.parameters.variants-tsv}}", "{{inputs.parameters.id}}", "-o", "{{inputs.parameters.output-dir}}/detect-variants/{{inputs.parameters.id}}.annotated.tsv"]
+      args: ["-t", "{{inputs.parameters.variants-tsv}}", "-o", "{{inputs.parameters.output-dir}}/detect-variants/{{inputs.parameters.id}}.annotated.tsv", "{{inputs.parameters.vcf}}", "{{inputs.parameters.vep-fields}}"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
