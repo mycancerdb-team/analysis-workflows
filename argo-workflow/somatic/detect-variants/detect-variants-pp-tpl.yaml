@@ -228,7 +228,7 @@ spec:
     container:
       image: griffithlab/vatools:3.1.0
       command: ['vep-annotation-reporter']
-      args: ["-t", "{{inputs.parameters.variants-tsv}}", "-o", "{{inputs.parameters.output-dir}}/detect-variants/{{inputs.parameters.id}}.annotated.tsv", "{{inputs.parameters.vcf}}", "{{inputs.parameters.vep-fields}}"]
+      args: ["-t", "{{inputs.parameters.variants-tsv}}", "-o", "{{inputs.parameters.output-dir}}/detect-variants/final/{{inputs.parameters.id}}.annotated.tsv", "{{inputs.parameters.vcf}}", "{{inputs.parameters.vep-fields}}"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -238,7 +238,7 @@ spec:
     outputs:
       parameters:
         - name: annotated_variants_tsv
-          value: "{{inputs.parameters.output-dir}}/detect-variants/{{inputs.parameters.id}}.annotated.tsv"
+          value: "{{inputs.parameters.output-dir}}/detect-variants/final/{{inputs.parameters.id}}.annotated.tsv"
 ###filter-vcf-somatic block
   - name: filter-known-variants
     inputs:
