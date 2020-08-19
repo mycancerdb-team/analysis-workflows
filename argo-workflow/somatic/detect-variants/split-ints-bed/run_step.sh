@@ -18,6 +18,3 @@ while read i; do
 done </root/scatter_list.txt
 echo -n "waiting for parallel execution to complete ... "
 wait
-
-mv /root/scatter_list.txt ${OUTPUTDIR}/${SERVICE}/scatter_list.txt
-:
