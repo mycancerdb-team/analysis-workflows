@@ -196,9 +196,18 @@ spec:
         persistentVolumeClaim:
           claimName: '{{inputs.parameters.pvc-name}}'
     container:
-      image: "mgibio/gatk-cwl:3.6.0"
-      command: ['/usr/bin/java']
-      args: ["-Xmx4g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "VariantsToTable", "-R", "{{inputs.parameters.reference}}", "--variant", "{{inputs.parameters.vcf}}", "{{inputs.parameters.fields}}", "{{inputs.parameters.genotype-fields}}", "--allowMissingData", "-o", "{{inputs.parameters.output-dir}}/detect-variants/final/variants.tsv"]
+      image: "docker.cancerdb.io/mgbio-workflow/variants-to-table:1.4.3"
+      env:
+      - name: REF
+        value: "{{inputs.parameters.reference}}"
+      - name: VCF
+        value: "{{inputs.parameters.vcf}}"
+      - name: FIELDS
+        value: "{{inputs.parameters.fields}}"
+      - name: GENO_FIELDS
+        value: "{{inputs.parameters.genotype-fields}}"
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -226,9 +235,18 @@ spec:
         persistentVolumeClaim:
           claimName: '{{inputs.parameters.pvc-name}}'
     container:
-      image: griffithlab/vatools:3.1.0
-      command: ['vep-annotation-reporter']
-      args: ["-t", "{{inputs.parameters.variants-tsv}}", "-o", "{{inputs.parameters.output-dir}}/detect-variants/final/{{inputs.parameters.id}}.annotated.tsv", "{{inputs.parameters.vcf}}", "{{inputs.parameters.vep-fields}}"]
+      image: docker.cancerdb.io/mgbio-workflow/vatools:3.1.0
+      env:
+      - name: VEP_FIELDS
+        value: "{{inputs.parameters.vep-fields}}"
+      - name: VCF
+        value: "{{inputs.parameters.vcf}}"
+      - name: VARS_TSV
+        value: "{{inputs.parameters.variants-tsv}}"
+      - name: ID
+        value: "{{inputs.parameters.id}}"
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
