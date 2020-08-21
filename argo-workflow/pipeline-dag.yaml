@@ -235,7 +235,7 @@ spec:
             - name: fastq2
               value: "{{workflow.parameters.cancer-fastq-r2}}"
             - name: data-type
-              value: cancer-exome
+              value: tumor-exome
             - name: platform-unit
               value: "{{workflow.parameters.sequence-platform-unit}}"
             - name: platform
@@ -262,7 +262,7 @@ spec:
             - name: fastq2
               value: "{{workflow.parameters.normal-fastq-r2}}"
             - name: data-type
-              value: somatic-exome
+              value: normal-exome
             - name: platform-unit
               value: "{{workflow.parameters.sequence-platform-unit}}"
             - name: platform
@@ -3792,9 +3792,9 @@ spec:
             - name: reference
               value: "{{workflow.parameters.genome-reference}}"
             - name: fields
-              value: "-F CHROM -F POS -F REF -F ALT -F set"
+              value: "CHROM POS REF ALT set"
             - name: genotype-fields
-              value: "-GF GT -GF AD -GF AF -GF DP"
+              value: "GT AD AF DP"
 #add vep variants to table #final tsv
       - name: add-vep-to-variant-table
         dependencies: [variants-to-table]
@@ -3812,9 +3812,9 @@ spec:
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: vcf
-              value: "{{tasks.filter-vcf-depth.outputs.parameters.depth_filtered_vcf}}"
+              value: "{{tasks.bgzip-annotated-filtered-vcf.outputs.parameters.bgzipped_output}}"
             - name: vep-fields
-              value: "'Consequence' 'SYMBOL' 'Feature_type' 'Feature' 'HGVSc' 'HGVSp' 'cDNA_position' 'CDS_position' 'Protein_position' 'Amino_acids' 'Codons' 'HGNC_ID' 'Existing_variation' 'gnomADe_AF' 'CLIN_SIG' 'SOMATIC' 'PHENO' 'clinvar_CLINSIGN' 'clinvar_PHENOTYPE' 'clinvar_SCORE' 'clinvar_RCVACC' 'clinvar_TESTEDINGTR' 'clinvar_PHENOTYPELIST' 'clinvar_NUMSUBMIT' 'clinvar_GUIDELINES'"
+              value: "Consequence SYMBOL Feature_type Feature HGVSc HGVSp cDNA_position CDS_position Protein_position Amino_acids Codons HGNC_ID Existing_variation gnomADe_AF CLIN_SIG SOMATIC PHENO clinvar_CLINSIGN clinvar_PHENOTYPE clinvar_SCORE clinvar_RCVACC clinvar_TESTEDINGTR clinvar_PHENOTYPELIST clinvar_NUMSUBMIT clinvar_GUIDELINES"
             - name: variants-tsv
               value: "{{tasks.variants-to-table.outputs.parameters.variants_tsv}}"
             - name: id
