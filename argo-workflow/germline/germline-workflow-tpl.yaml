@@ -1,6 +1,287 @@
 apiVersion: argoproj.io/v1alpha1
-kind: ClusterWorkflowTemplate
+kind: WorkflowTemplate
 metadata:
-  name: cluster-workflow-template-whalesay-template
+  name: immuno-germline-workflow
 spec:
+  volumes:
+    - name: pvc-reference
+      persistentVolumeClaim:
+        claimName: workflow-ref-hg38-dev #### This is subject to change.
+  imagePullSecrets:
+    - name: mgbio-cred
+    - name: mcdb-bot
   templates:
+  - name: extract-freemix
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: verify_bam_id_metrics
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/freemix-var:1.0.0
+      env:
+      - name: VERIFYBAMFILE
+        value: "{{inputs.parameters.verify_bam_id_metrics}}"
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: freemix_score
+          valueFrom:
+            path: "{{inputs.parameters.output-dir}}/normal_final/freemix_score.txt"
+  - name: gatk-haplotype-workflow
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: reference
+      - name: bam
+      - name: intervals
+      - name: contamination-fraction #extract-freemix/freemix_score
+      - name: emit-ref-confidence
+      #- name: gvcf-gq-bands
+      #- name: dbsnp-vcf
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/gatk-haplotype:3.5.0
+      env:
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      - name: REF
+        value: "{{inputs.parameters.reference}}"
+      - name: BAM
+        value: "{{inputs.parameters.bam}}"
+      - name: EMITREF_CONFI
+        value: "{{inputs.parameters.emit-ref-confidence}}"
+      - name: INTERVALS
+        value: "{{inputs.parameters.intervals}}"
+      - name: CONTAM_FRAC
+        value: "{{inputs.parameters.contamination-fraction}}"
+      #- name: GVCF_GQ
+      #  value: "{{inputs.parameters.gvcf-gq-bands}}"
+      #- name: DBSNP
+      #  value: "{{inputs.parameters.dbsnp-vcf}}"
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: genotype_vcf
+          value: "{{inputs.parameters.output-dir}}/normal_final/genotype.vcf.gz"
+        - name: genotype_vcf_index
+          value: "{{inputs.parameters.output-dir}}/normal_final/genotype.vcf.gz.tbi"
+  - name: germline-vep-annotation
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: vcf
+      - name: id
+      - name: cache-dir
+      - name: ensembl-assembly
+      - name: ensembl-version
+      - name: ensembl-species
+      - name: synonyms-file
+      - name: reference
+      - name: custom-annotations
+      - name: plugin1
+      - name: plugin2
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/vep_helper-cwl:1.1.0
+      command: ['/usr/bin/perl']
+      args: ["-I", "/opt/lib/perl/VEP/Plugins", "/usr/bin/variant_effect_predictor.pl", "--format", "vcf", "--vcf", "--fork", "4", "--term", "SO", "--transcript_version", "--offline", "--cache", "--symbol", "-o",  "{{inputs.parameters.output-dir}}/normal_final/{{inputs.parameters.id}}_vep_annotated.vcf", "-i", "{{inputs.parameters.vcf}}", "--dir", "{{inputs.parameters.cache-dir}}", "--synonyms", "{{inputs.parameters.synonyms-file}}", "--check_existing", "--custom", "{{inputs.parameters.custom-annotations}}", "--fasta", "--flag_pick", "{{inputs.parameters.reference}}", "--plugin", "{{inputs.parameters.plugin1}}", "--plugin", "{{inputs.parameters.plugin2}}", "--everything", "--assembly", "{{inputs.parameters.ensembl-assembly}}", "--cache_version", "{{inputs.parameters.ensembl-version}}", "--species", "{{inputs.parameters.ensembl-species}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: annotated_vcf
+          value: "{{inputs.parameters.output-dir}}/normal_final/{{inputs.parameters.id}}_vep_annotated.vcf"
+        - name: vep_summary
+          value: "{{inputs.parameters.output-dir}}/normal_final/{{inputs.parameters.id}}_vep_annotated.vcf_summary.html"
+#filter vcf coding
+  - name: filter-vcf-coding
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: vcf
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/filter-vcf:1.0.0
+      env:
+      - name: VCF
+        value: "{{inputs.parameters.vcf}}"
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: filtered_vcf
+          value: "{{inputs.parameters.output-dir}}/normal_final/germline-filter/annotated.coding_variant_filtered.vcf"
+#gnomad-freq-filter
+  - name: gnomad-freq-filter
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: vcf
+      - name: maximum-population-allele-freq #gnomADe_AF < 0.05 or not gnomADe_AF
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/vep_helper-cwl:1.1.0
+      command: ['/usr/bin/perl']
+      args: ["/usr/bin/vcf_check.pl", "{{inputs.parameters.vcf}}", "{{inputs.parameters.output-dir}}/normal_final/germline-filter/annotated.filtered.vcf", "/usr/bin/perl", "/opt/vep/src/ensembl-vep/filter_vep", "--format", "vcf", "-o", "{{inputs.parameters.output-dir}}/normal_final/germline-filter/annotated.filtered.vcf", "-i", "{{inputs.parameters.vcf}}", "--filter", "{{inputs.parameters.maximum-population-allele-freq}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: filtered_vcf
+          value: "{{inputs.parameters.output-dir}}/normal_final/germline-filter/annotated.filtered.vcf"
+#optitype-dna
+  - name: optitype-dna
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: optitype_name
+      - name: cram
+      - name: reference
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/immuno_tools-cwl:1.0.1
+      workingDir: "{{inputs.parameters.output-dir}}/normal_final"
+      command: ['/bin/bash']
+      args: ["/usr/bin/optitype_script.sh", "{{inputs.parameters.optitype_name}}", "{{inputs.parameters.cram}}", "{{inputs.parameters.reference}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: optitype_tsv
+          value: "{{inputs.parameters.output-dir}}/normal_final/{{inputs.parameters.optitype_name}}_result.tsv}"
+        - name: optitype_plot
+          value: "{{inputs.parameters.output-dir}}/normal_final/{{inputs.parameters.optitype_name}}_coverage_plot.pdf"
+  - name: germ-bgzip
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: "cpu"
+      - name: "mem"
+      - name: input-file
+      - name: output-dir
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/germ-bgzip:1.0.0
+      env:
+      - name: INPUTFILE
+        value: "{{inputs.parameters.input-file}}"
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: bgzipped_output
+          value: "{{inputs.parameters.output-dir}}/normal_final/germline-filter/{{inputs.parameters.input-file}}.gz"
+  - name: limit-variants
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: reference
+      - name: vcf-ref
+      - name: target-intervals
+      - name: service
+      - name: filename
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/gatk-cwl:3.6.0
+      command: ['/usr/bin/java']
+      args: ["-Xmx8g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "SelectVariants", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.filename}}.vcf.gz", "-R", "{{inputs.parameters.reference}}", "--variant", "{{inputs.parameters.vcf-ref}}", "-L", "{{inputs.parameters.target-intervals}}", "--excludeFiltered"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: filtered_vcf
+          value:  "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.filename}}.vcf.gz"
