@@ -190,6 +190,8 @@ spec:
       - name: vcf
       - name: fields
       - name: genotype-fields
+      - name: service-dir
+      - name: id
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -208,6 +210,10 @@ spec:
         value: "{{inputs.parameters.genotype-fields}}"
       - name: OUTPUTDIR
         value: "{{inputs.parameters.output-dir}}"
+      - name: SERVICE
+        value: "{{inputs.parameters.service-dir}}"
+      - name: ID
+        value: "{{inputs.parameters.id}}"
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -217,7 +223,7 @@ spec:
     outputs:
       parameters:
         - name: variants_tsv
-          value: "{{inputs.parameters.output-dir}}/detect-variants/final/variants.tsv"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service-dir}}/{{inputs.parameters.id}}_variants.tsv"
   - name: vep-annotation-reporter
     inputs:
       parameters:
@@ -229,6 +235,7 @@ spec:
       - name: vep-fields
       - name: variants-tsv
       - name: id
+      - name: service-dir
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -247,6 +254,8 @@ spec:
         value: "{{inputs.parameters.id}}"
       - name: OUTPUTDIR
         value: "{{inputs.parameters.output-dir}}"
+      - name: SERVICE
+        value: "{{inputs.parameters.service-dir}}"
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -256,7 +265,7 @@ spec:
     outputs:
       parameters:
         - name: annotated_variants_tsv
-          value: "{{inputs.parameters.output-dir}}/detect-variants/final/{{inputs.parameters.id}}.annotated.tsv"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service-dir}}/{{inputs.parameters.id}}.annotated.tsv"
 ###filter-vcf-somatic block
   - name: filter-known-variants
     inputs:
