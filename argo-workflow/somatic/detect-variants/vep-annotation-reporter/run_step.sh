@@ -8,5 +8,6 @@ set -o errexit
 #ENV VARS -- VARS_TSV
 #ENV VARS -- ID
 #ENV VARS -- OUTPUTDIR
+#ENV VARS -- SERVICE detect-variants/final
 
-vep-annotation-reporter -t "${VARS_TSV}" -o "${OUTPUTDIR}/detect-variants/final/${ID}.annotated.tsv" "${VCF}" ${VEP_FIELDS}
+vep-annotation-reporter -t "${VARS_TSV}" -o "${OUTPUTDIR}/${SERVICE}/${ID}.annotated.tsv" "${VCF}" ${VEP_FIELDS}
