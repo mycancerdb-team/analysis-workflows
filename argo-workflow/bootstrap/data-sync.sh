@@ -15,7 +15,7 @@ mkdir -p ${OUTPUTDIR}/output/{select_variants,mutect/{split-ints,sani,normalized
 #RNA Folders
 mkdir -p ${OUTPUTDIR}/output/{rna_final,rna_trimmed_read,rna_hisat2_align/aligned_bam,rna_merged_bam,rna_index_bam}
 #Normal Folders
-mkdir -p ${OUTPUTDIR}/output/{normal_final,normal_bwa,normal_dups,normal_namesort,normal_bqsr}
+mkdir -p ${OUTPUTDIR}/output/{normal_final/{haplotyper,germline-filter},normal_bwa,normal_dups,normal_namesort,normal_bqsr}
 #Cancer Folders
 mkdir -p ${OUTPUTDIR}/output/{cancer_final,cancer_bwa,cancer_dups,cancer_namesort,cancer_bqsr}
 #VEP needs special permissions
