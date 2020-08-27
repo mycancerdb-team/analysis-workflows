@@ -8,7 +8,7 @@ set -o errexit
 
 HEADER=$(awk '{print $7}' ${VERIFYBAMFILE} | sed 2d)
 
-if [[ "$HEADER" == "FREEMIX"]]; then
+if [[ "$HEADER" == 'FREEMIX' ]]; then
   awk '{print $7}' ${VERIFYBAMFILE} | sed 1d >> ${OUTPUTDIR}/normal_final/freemix_score.txt
   exit 0
 else
