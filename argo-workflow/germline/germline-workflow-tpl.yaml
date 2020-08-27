@@ -211,7 +211,7 @@ spec:
       image: mgibio/immuno_tools-cwl:1.0.1
       workingDir: "{{inputs.parameters.output-dir}}/normal_final"
       command: ['/bin/bash']
-      args: ["/usr/bin/optitype_script.sh", "{{inputs.parameters.optitype_name}}", "{{inputs.parameters.cram}}", "{{inputs.parameters.reference}}"]
+      args: ["/usr/bin/optitype_script.sh", "{{inputs.parameters.output-dir}}/normal_final/optitemp", "{{inputs.parameters.output-dir}}/normal_final", "{{inputs.parameters.optitype_name}}", "{{inputs.parameters.cram}}", "{{inputs.parameters.reference}}"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
