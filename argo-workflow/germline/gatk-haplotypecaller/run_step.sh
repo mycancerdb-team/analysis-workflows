@@ -32,4 +32,4 @@ sem --wait
 
 GVCF=$(for c in ${INTERVALS} ; do printf -- "--variant ${OUTPUTDIR}/normal_final/haplotyper/${c}/${c}.g.vcf.gz " ; done)
 
-genotypewrkflw ${GVCF}
+genotypewrkflw "${GVCF}"
