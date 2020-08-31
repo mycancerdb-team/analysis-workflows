@@ -1,6 +1,210 @@
 apiVersion: argoproj.io/v1alpha1
-kind: ClusterWorkflowTemplate
+kind: WorkflowTemplate
 metadata:
-  name: cluster-workflow-template-whalesay-template
+  name: immuno-phasevcf-workflow
 spec:
+  volumes:
+    - name: pvc-reference
+      persistentVolumeClaim:
+        claimName: workflow-ref-hg38-dev #### This is subject to change.
+  imagePullSecrets:
+    - name: mgbio-cred
+    - name: mcdb-bot
   templates:
+    - name: pvacseq-combine-vars
+      inputs:
+        parameters:
+        - name: pvc-name
+        - name: output-dir
+        - name: "cpu"
+        - name: "mem"
+        - name: reference
+        - name: germ-vcf
+        - name: somatic-vcf
+      podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+      volumes:
+        - name: '{{inputs.parameters.pvc-name}}'
+          persistentVolumeClaim:
+            claimName: '{{inputs.parameters.pvc-name}}'
+      container:
+        image: mgibio/gatk-cwl:3.6.0
+        workingDir: "{{inputs.parameters.output-dir}}/phasevcf"
+        command: ['/usr/bin/java']
+        args: ["-Xmx8g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "CombineVariants", "--assumeIdenticalSamples", "-o", "{{inputs.parameters.output-dir}}/phasevcf/combined_somatic_plus_germline.vcf"]
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: '{{inputs.parameters.pvc-name}}'
+          mountPath: /data
+        - name: pvc-reference
+          mountPath: /ref-hg38
+      outputs:
+        parameters:
+          - name: combined_vcf
+            value: "{{inputs.parameters.output-dir}}/phasevcf/combined_somatic_plus_germline.vcf"
+    - name: sort-vcf
+      inputs:
+        parameters:
+        - name: pvc-name
+        - name: output-dir
+        - name: "cpu"
+        - name: "mem"
+        - name: vcf
+        - name: reference
+        - name: service
+        - name: id
+      podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+      volumes:
+        - name: '{{inputs.parameters.pvc-name}}'
+          persistentVolumeClaim:
+            claimName: '{{inputs.parameters.pvc-name}}'
+      container:
+        image: mgibio/picard-cwl:2.18.1
+        command: ['/usr/bin/java']
+        args: ["-Xmx16g", "-jar", "/opt/picard/picard.jar", "SortVcf", "O=", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.id}}_sorted.vcf", "I=", "{{inputs.parameters.vcf}}", "SEQUENCE_DICTIONARY=", "{{inputs.parameters.reference}}"]
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: '{{inputs.parameters.pvc-name}}'
+          mountPath: /data
+        - name: pvc-reference
+          mountPath: /ref-hg38
+      outputs:
+        parameters:
+          - name: sorted_vcf
+            value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.id}}_sorted.vcf"
+    - name: phase-vcf
+      inputs:
+        parameters:
+        - name: pvc-name
+        - name: output-dir
+        - name: "cpu"
+        - name: "mem"
+        - name: reference
+        - name: bam
+        - name: vcf
+        - name: service
+        - name: id
+      podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+      volumes:
+        - name: '{{inputs.parameters.pvc-name}}'
+          persistentVolumeClaim:
+            claimName: '{{inputs.parameters.pvc-name}}'
+      container:
+        image: mgibio/gatk-cwl:3.6.0
+        command: ['/usr/bin/java']
+        args: ["-Xmx8g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "ReadBackedPhasing", "-L", "{{inputs.parameters.vcf}}", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.id}}_phased.vcf", "-R", "{{inputs.parameters.reference}}", "-I", "{{inputs.parameters.bam}}", "-V", "{{inputs.parameters.vcf}}"]
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: '{{inputs.parameters.pvc-name}}'
+          mountPath: /data
+        - name: pvc-reference
+          mountPath: /ref-hg38
+      outputs:
+        parameters:
+          - name: phased_vcf
+            value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.id}}_phased.vcf"
+    - name: rename-vcf
+      inputs:
+        parameters:
+        - name: pvc-name
+        - name: output-dir
+        - name: "cpu"
+        - name: "mem"
+        - name: vcf
+        - name: sample-to-replace
+        - name: new-sample-name
+        - name: id
+        - name: service
+      podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+      volumes:
+        - name: '{{inputs.parameters.pvc-name}}'
+          persistentVolumeClaim:
+            claimName: '{{inputs.parameters.pvc-name}}'
+      container:
+        image: docker.cancerdb.io/mgbio-workflow/rename-vcf:1.9
+        env:
+        - name: OUTPUTDIR
+          value: "{{inputs.parameters.output-dir}}"
+        - name: VCF
+          value: "{{inputs.parameters.vcf}}"
+        - name: OLDNAME
+          value: "{{inputs.parameters.sample-to-replace}}"
+        - name: NEWNAME
+          value: "{{inputs.parameters.new-sample-name}}"
+        - name: ID
+          value: "{{inputs.parameters.id}}"
+        - name: SVC
+          value: "{{inputs.parameters.service}}"
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: '{{inputs.parameters.pvc-name}}'
+          mountPath: /data
+        - name: pvc-reference
+          mountPath: /ref-hg38
+      outputs:
+        parameters:
+          - name: renamed_vcf
+            value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.id}}_renamed.vcf.gz"
+    - name: select-somatic-variants
+      inputs:
+        parameters:
+        - name: pvc-name
+        - name: output-dir
+        - name: "cpu"
+        - name: "mem"
+        - name: reference
+        - name: vcf-ref
+        - name: service
+        - name: filename #somatic_tumor_only
+        - name: sample-name
+      podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+      volumes:
+        - name: '{{inputs.parameters.pvc-name}}'
+          persistentVolumeClaim:
+            claimName: '{{inputs.parameters.pvc-name}}'
+      container:
+        image: mgibio/gatk-cwl:3.6.0
+        command: ['/usr/bin/java']
+        args: ["-Xmx8g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "SelectVariants", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.filename}}.vcf.gz", "-R", "{{inputs.parameters.reference}}", "--variant", "{{inputs.parameters.vcf-ref}}", "--sample_name", "{{inputs.parameters.sample-name}}"]
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: '{{inputs.parameters.pvc-name}}'
+          mountPath: /data
+        - name: pvc-reference
+          mountPath: /ref-hg38
+      outputs:
+        parameters:
+          - name: filtered_vcf
+            value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.filename}}.vcf.gz"
+    #- name: ###
+    #  inputs:
+    #    parameters:
+    #    - name: pvc-name
+    #    - name: output-dir
+    #    - name: "cpu"
+    #    - name: "mem"
+    #    - name: threads
+    #    - name: ###
+    #    - name: ###
+    #    - name: ###
+    #  podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    #  volumes:
+    #    - name: '{{inputs.parameters.pvc-name}}'
+    #      persistentVolumeClaim:
+    #        claimName: '{{inputs.parameters.pvc-name}}'
+    #  container:
+    #    image: ##### docker.cancerdb.io/mgbio-workflow/
+    #    env:
+    #    - name: ###
+    #      value: ###
+    #    command: ['###']
+    #    args: ["###"]
+    #    imagePullPolicy: Always
+    #    volumeMounts:
+    #    - name: '{{inputs.parameters.pvc-name}}'
+    #      mountPath: /data
+    #    - name: pvc-reference
+    #      mountPath: /ref-hg38
+    #  outputs:
+    #    parameters:
+    #      - name: ###
+    #        value: ###
