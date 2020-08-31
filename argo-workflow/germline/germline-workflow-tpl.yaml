@@ -285,3 +285,33 @@ spec:
       parameters:
         - name: filtered_vcf
           value:  "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.filename}}.vcf.gz"
+  - name: hla-extract-consensus
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: "cpu"
+      - name: "mem"
+      - name: opti-tsv
+      - name: output-dir
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/hla-extract-consensus:1.0.0
+      env:
+      - name: OPTITSV
+        value: "{{inputs.parameters.opti-tsv}}"
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: hla_list
+          value: "{{inputs.parameters.output-dir}}/hla/hla_calls.list"
