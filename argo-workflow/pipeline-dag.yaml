@@ -3636,7 +3636,7 @@ spec:
             - name: vcf
               value: "{{tasks.filter-known-variants.outputs.parameters.known_filtered}}"
             - name: maximum-population-allele-freq
-              value: "gnomADe_AF < 0.001 or not gnomADe_AF"
+              value: "{{workflow.parameters.max-population-allele-freq}}"
 #filter_mapq0
       - name: filter-vcf-mapq0
         dependencies: [filter-vcf-allele-freq]
@@ -3795,6 +3795,10 @@ spec:
               value: "CHROM POS REF ALT set"
             - name: genotype-fields
               value: "GT AD AF DP"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: service-dir
+              value: "detect-variants/final"
 #add vep variants to table #final tsv
       - name: add-vep-to-variant-table
         dependencies: [variants-to-table]
@@ -3819,5 +3823,645 @@ spec:
               value: "{{tasks.variants-to-table.outputs.parameters.variants_tsv}}"
             - name: id
               value: "{{workflow.parameters.id}}"
+            - name: service-dir
+              value: "detect-variants/final"
 ### END DETECT VARIANTS
 ## END SOMATIC WORKFLOW
+## BEGIN GERMLINE
+##extract freemix -- Dependency on Alignment and QC normal
+      - name: extract-freemix-score
+        dependencies: [normal-verify-bam]
+        templateRef:
+          name: immuno-germline-workflow
+          template: extract-freemix
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "2"
+            - name: "mem"
+              value: "2Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: verify_bam_id_metrics
+              value: "{{tasks.normal-verify-bam.outputs.parameters.verify_bam_id_metrics}}"
+##detect-variants Germline
+##haplotypecaller
+##genotype
+      - name: germline-haplo-genotyper
+        dependencies: [extract-freemix-score]
+        templateRef:
+          name: immuno-germline-workflow
+          template: gatk-haplotype-workflow
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "48Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: bam
+              value: "{{tasks.normal-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: intervals
+              value: "{{workflow.parameters.gatk-haplotypecaller-intervals}}"
+            - name: contamination-fraction
+              value: "{{tasks.extract-freemix-score.outputs.parameters.freemix_score}}"
+            - name: emit-ref-confidence
+              value: "{{workflow.parameters.emit-ref-confidence}}"
+##annotate_vars
+      - name: germline-annotate-variants
+        dependencies: [germline-haplo-genotyper]
+        templateRef:
+          name: immuno-germline-workflow
+          template: germline-vep-annotation
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{{tasks.germline-haplo-genotyper.outputs.parameters.genotype_vcf}}"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: cache-dir
+              value: "{{workflow.parameters.vep-cache-dir}}"
+            - name: ensembl-assembly
+              value: "{{workflow.parameters.vep-ensembl-assembly}}"
+            - name: ensembl-version
+              value: "{{workflow.parameters.vep-ensembl-version}}"
+            - name: ensembl-species
+              value: "{{workflow.parameters.vep-ensembl-species}}"
+            - name: synonyms-file
+              value: "{{workflow.parameters.vep-syn-file}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: custom-annotations
+              value: "{{workflow.parameters.vep-custom-annotation}},gnomADe,vcf,exact,1,AF,AF_AFR,AF_AMR,AF_ASJ,AF_EAS,AF_FIN,AF_NFE,AF_OTH,AF_SAS" ### process
+            - name: plugin1
+              value: "Downstream"
+            - name: plugin2
+              value: "Wildtype"
+##bgzip annoated VCF
+      - name: germline-bgzip-annotated-vcf
+        dependencies: [germline-annotate-variants]
+        templateRef:
+          name: immuno-germline-workflow
+          template: germ-bgzip
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "8Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: input-file
+              value: "{{tasks.germline-annotate-variants.outputs.parameters.annotated_vcf}}"
+##index annotated VCF
+      - name: germline-index-annotated-vcf
+        dependencies: [germline-bgzip-annotated-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "24Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "normal_final"
+            - name: data-type
+              value: germline-filter #this is used to prevent subdir creation. Accepts string values.
+            - name: vcf
+              value: "{{tasks.germline-bgzip-annotated-vcf.outputs.parameters.bgzipped_output}}"
+##germline filter
+#filter vcf coding
+      - name: germline-filter-coding-var
+        dependencies: [germline-index-annotated-vcf]
+        templateRef:
+          name: immuno-germline-workflow
+          template: filter-vcf-coding
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "4Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{{tasks.germline-annotate-variants.outputs.parameters.annotated_vcf}}"
+#gnomad-freq-filter
+      - name: germline-gnomad-freq-filter
+        dependencies: [germline-filter-coding-var]
+        templateRef:
+          name: immuno-germline-workflow
+          template: gnomad-freq-filter
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "4Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{{tasks.germline-filter-coding-var.outputs.parameters.filtered_vcf}}"
+            - name: maximum-population-allele-freq
+              value: "{{workflow.parameters.max-population-allele-freq}}"
+#bgzip //filtered_final
+      - name: bgzip-germline-annotated-filter
+        dependencies: [germline-gnomad-freq-filter]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: bgzip
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: input-file
+              value: "{{tasks.germline-gnomad-freq-filter.outputs.parameters.filtered_vcf}}"
+#index //filtered_final
+      - name: germline-index-annotated-filter-vcf
+        dependencies: [bgzip-germline-annotated-filter]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "24Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "normal_final"
+            - name: data-type
+              value: germline-filter #this is used to prevent subdir creation. Accepts string values.
+            - name: vcf
+              value: "{{tasks.bgzip-germline-annotated-filter.outputs.parameters.bgzipped_output}}"
+#select variants //final_vcf
+      - name: germline-select-variants
+        dependencies: [germline-index-annotated-filter-vcf]
+        templateRef:
+          name: immuno-germline-workflow
+          template: limit-variants
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "8Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "normal_final"
+            - name: filename
+              value: "annotated.filtered.final"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: vcf-ref
+              value: "{{tasks.bgzip-germline-annotated-filter.outputs.parameters.bgzipped_output}}"
+            - name: target-intervals
+              value: "{{workflow.parameters.target-intervals}}"
+##vars to table filtered
+      - name: germline-vars-table-filtered
+        dependencies: [germline-index-annotated-filter-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars-pp
+          template: variants-to-table
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "8Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{{tasks.bgzip-germline-annotated-filter.outputs.parameters.bgzipped_output}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: fields
+              value: "CHROM POS REF ALT set"
+            - name: genotype-fields
+              value: "GT AD AF DP"
+            - name: id
+              value: "{{workflow.parameters.id}}_filtered"
+            - name: service-dir
+              value: "normal_final"
+##add vep fields to table filtered
+      - name: germline-add-vep-to-table-filtered
+        dependencies: [germline-index-annotated-filter-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars-pp
+          template: vep-annotation-reporter
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "8Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{tasks.bgzip-germline-annotated-filter.outputs.parameters.bgzipped_output}}"
+            - name: vep-fields
+              value: "Consequence SYMBOL Feature_type Feature HGVSc HGVSp cDNA_position CDS_position Protein_position Amino_acids Codons HGNC_ID Existing_variation gnomADe_AF CLIN_SIG SOMATIC PHENO clinvar_CLINSIGN clinvar_PHENOTYPE clinvar_SCORE clinvar_RCVACC clinvar_TESTEDINGTR clinvar_PHENOTYPELIST clinvar_NUMSUBMIT clinvar_GUIDELINES"
+            - name: variants-tsv
+              value: "{{tasks.germline-vars-table-filtered.outputs.parameters.variants_tsv}}"
+            - name: id
+              value: "{{workflow.parameters.id}}_filtered"
+            - name: service-dir
+              value: "normal_final"
+##vars to table final
+      - name: germline-vars-table-final
+        dependencies: [germline-select-variants]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars-pp
+          template: variants-to-table
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "8Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{{tasks.germline-select-variants.outputs.parameters.filtered_vcf}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: fields
+              value: "CHROM POS REF ALT set"
+            - name: genotype-fields
+              value: "GT AD AF DP"
+            - name: id
+              value: "{{workflow.parameters.id}}_final"
+            - name: service-dir
+              value: "normal_final"
+##add vep fields to table final
+      - name: germline-add-vep-to-table-final
+        dependencies: [germline-vars-table-final]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars-pp
+          template: vep-annotation-reporter
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "8Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{{tasks.germline-select-variants.outputs.parameters.filtered_vcf}}"
+            - name: vep-fields
+              value: "Consequence SYMBOL Feature_type Feature HGVSc HGVSp cDNA_position CDS_position Protein_position Amino_acids Codons HGNC_ID Existing_variation gnomADe_AF CLIN_SIG SOMATIC PHENO clinvar_CLINSIGN clinvar_PHENOTYPE clinvar_SCORE clinvar_RCVACC clinvar_TESTEDINGTR clinvar_PHENOTYPELIST clinvar_NUMSUBMIT clinvar_GUIDELINES"
+            - name: variants-tsv
+              value: "{{tasks.germline-vars-table-final.outputs.parameters.variants_tsv}}"
+            - name: id
+              value: "{{workflow.parameters.id}}_final"
+            - name: service-dir
+              value: "normal_final"
+##detect-variants Germline
+##optitype
+      - name: germline-optitype-dna
+        dependencies: [normal-bam-to-cram]
+        templateRef:
+          name: immuno-germline-workflow
+          template: optitype-dna
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "64Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: cram
+              value: "{{tasks.normal-bam-to-cram.outputs.parameters.crammed-bam}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: optitype_name
+              value: optitype
+##END GERMLINE
+## HLA EXTRACT ALLELES AND CONSENSUS
+      - name: hla-extract-and-consensus
+        dependencies: [germline-optitype-dna]
+        templateRef:
+          name: immuno-germline-workflow
+          template: hla-extract-consensus
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: opti-tsv
+              value: "{{tasks.germline-optitype-dna.outputs.parameters.optitype_tsv}}"
+## END HLA EXTRACT ALLELES AND CONSENSUS
+
+##PhaseVCF
+# germ-vcf
+            #- name: vcf
+            #  value: "{{tasks.germline-select-variants.outputs.parameters.filtered_vcf}}"
+# somatic-vcf
+            #- name: vcf
+            #  value: "{{tasks.add-normal-bam-readcount-indel.outputs.parameters.annotated_bam_readcount_vcf}}"
+# tumor-cram
+            #- name: cram
+            #  value: "{{tasks.tumor-bam-to-cram.outputs.parameters.crammed-bam}}"
+#rename germ vcf
+      - name: phasevcf-rename-vcf
+        dependencies: [germline-select-variants]
+        templateRef:
+          name: immuno-phasevcf-workflow
+          template: rename-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{{tasks.germline-select-variants.outputs.parameters.filtered_vcf}}"
+            - name: sample-to-replace
+              value: "{{workflow.parameters.normal-sample-name}}"
+            - name: new-sample-name
+              value: "{{workflow.parameters.tumor-sample-name}}"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: service
+              value: phasevcf
+# index renamed
+      - name: index-renamed-phasevcf
+        dependencies: [phasevcf-rename-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "phasevf"
+            - name: data-type
+              value: 0 #this is used to prevent subdir creation. Accepts string values.
+            - name: vcf
+              value: "{{tasks.phasevcf-rename-vcf.outputs.parameters.renamed_vcf}}"
+# select vars
+      - name: phase-select-variants
+        dependencies: [detect-variants-index-vcf]
+        templateRef:
+          name: immuno-phasevcf-workflow
+          template: select-somatic-variants
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "8Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "phasevcf"
+            - name: filename
+              value: "somatic_tumor_only"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: vcf-ref
+              value: "{{tasks.add-normal-bam-readcount-indel.outputs.parameters.annotated_bam_readcount_vcf}}"
+            - name: sample-name
+              value: "{{workflow.parameters.tumor-sample-name}}"
+# index vars
+      - name: index-phase-select-vars
+        dependencies: [phase-select-variants]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "phasevf"
+            - name: data-type
+              value: 0 #this is used to prevent subdir creation. Accepts string values.
+            - name: vcf
+              value: "{{tasks.phase-select-variants.outputs.parameters.filtered_vcf}"
+# pvascseq combine vars
+      - name: phase-combine-vars
+        dependencies: [index-phase-select-vars, index-renamed-phasevcf]
+        templateRef:
+          name: immuno-phasevcf-workflow
+          template: pvacseq-combine-vars
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: germ-vcf
+              value: "{{tasks.phasevcf-rename-vcf.outputs.parameters.renamed_vcf}}"
+            - name: somatic-vcf
+              value: "{{tasks.phase-select-variants.outputs.parameters.filtered_vcf}"
+# sort vcf
+      - name: phase-sort-vars
+        dependencies: [phase-combine-vars]
+        templateRef:
+          name: immuno-phasevcf-workflow
+          template: sort-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: vcf
+              value: "{{tasks.phase-combine-vars.outputs.parameters.combined_vcf}}"
+            - name: service
+              value: "phasevcf"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+# bgzip and index
+      - name: bgzip-phase-sort-vars
+        dependencies: [phase-sort-vars]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: bgzip
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: input-file
+              value: "{{tasks.phase-sort-vars.outputs.parameters.sorted_vcf}}"
+      - name: index-phase-sort-vars
+        dependencies: [bgzip-phase-sort-vars]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "phasevcf"
+            - name: data-type
+              value: 0
+            - name: vcf
+              value: "{{tasks.bgzip-phase-sort-vars.outputs.parameters.bgzipped_output}}"
+# phased vcf
+      - name: phased-vcf
+        dependencies: [index-phase-sort-vars,tumor-bam-to-cram]
+        templateRef:
+          name: immuno-phasevcf-workflow
+          template: sort-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: vcf
+              value: "{{tasks.bgzip-phase-sort-vars.outputs.parameters.bgzipped_output}}"
+            - name: service
+              value: "phasevcf"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: bam
+              value: "{{tasks.tumor-bam-to-cram.outputs.parameters.crammed-bam}}"
+# bgzip and index
+      - name: bgzip-phased-vcf
+        dependencies: [phased-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: bgzip
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: input-file
+              value: "{{tasks.phased-vcf.outputs.parameters.phased_vcf}}"
+      - name: index-phased-vcf
+        dependencies: [bgzip-phased-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars
+          template: index-vcf
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.phased-vcf.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: service
+              value: "phasevcf"
+            - name: data-type
+              value: 0
+            - name: vcf
+              value: "{{tasks.bgzip-phased-vcf.outputs.parameters.bgzipped_output}}"
