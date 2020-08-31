@@ -19,6 +19,6 @@ mkdir -p ${OUTPUTDIR}/output/{normal_final/{haplotyper,germline-filter,optitemp}
 #Cancer Folders
 mkdir -p ${OUTPUTDIR}/output/{cancer_final,cancer_bwa,cancer_dups,cancer_namesort,cancer_bqsr}
 #VEP needs special permissions
-chmod -R 0777 ${OUTPUTDIR}/output/detect-variants/
+chmod -R 0777 ${OUTPUTDIR}/output/detect-variants/ ${OUTPUTDIR}/output/normal_final
 date
 :
