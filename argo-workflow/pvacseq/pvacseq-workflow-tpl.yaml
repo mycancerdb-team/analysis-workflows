@@ -1,6 +1,147 @@
 apiVersion: argoproj.io/v1alpha1
-kind: ClusterWorkflowTemplate
+kind: WorkflowTemplate
 metadata:
-  name: cluster-workflow-template-whalesay-template
+  name: immuno-pvacseq-workflow
 spec:
+  volumes:
+    - name: pvc-reference
+      persistentVolumeClaim:
+        claimName: workflow-ref-hg38-dev #### This is subject to change.
+  imagePullSecrets:
+    - name: mgbio-cred
+    - name: mcdb-bot
   templates:
+    - name: vcf-expression-annotator
+      inputs:
+        parameters:
+        - name: pvc-name
+        - name: output-dir
+        - name: "cpu"
+        - name: "mem"
+        - name: vcf
+        - name: expression-file
+        - name: expression-tool
+        - name: data-type
+        - name: sample-name
+        - name: service
+      podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+      volumes:
+        - name: '{{inputs.parameters.pvc-name}}'
+          persistentVolumeClaim:
+            claimName: '{{inputs.parameters.pvc-name}}'
+      container:
+        image: griffithlab/vatools:3.1.0
+        command: ['vcf-expression-annotator']
+        args: ["-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/annotated.expression.vcf.gz", "-s", "{{inputs.parameters.sample-name}}", "{{inputs.parameters.vcf}}", "{{inputs.parameters.expression-file}}", "{{inputs.parameters.expression-tool}}", "{{inputs.parameters.data-type}}"]
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: '{{inputs.parameters.pvc-name}}'
+          mountPath: /data
+        - name: pvc-reference
+          mountPath: /ref-hg38
+      outputs:
+        parameters:
+          - name: annotated_expression_vcf
+            value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/annotated.expression.vcf.gz"
+    - name: pvacseq-workflow
+      inputs:
+        parameters:
+        - name: pvc-name
+        - name: output-dir
+        - name: "cpu"
+        - name: "mem"
+        - name: threads
+        - name: vcf #index/indexed_vcf
+        - name: sample-name
+        - name: alleles #allele string
+        - name: prediction-algos #prediction_algorithms
+        - name: epitope-lengths
+        - name: normal-sample-name
+        - name: phased-proximal-variants-vcf
+        #- name: minimum-fold-change
+        #- name: peptide-sequence-length
+        #- name: top-score-metric
+        #- name: additional-report-columns
+        #- name: fasta-size
+        #- name: downstream-sequence-length
+        #- name: exclude-nas
+        #- name: maximum-transcript-support-level
+        #- name: normal-cov
+        #- name: tdna-cov
+        #- name: trna-cov
+        #- name: normal-vaf
+        #- name: tdna-vaf
+        #- name: trna-vaf
+        #- name: expn-val
+        #- name: net-chop-method
+        #- name: net-chop-threshold
+        #- name: netmhc-stab
+      podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+      volumes:
+        - name: '{{inputs.parameters.pvc-name}}'
+          persistentVolumeClaim:
+            claimName: '{{inputs.parameters.pvc-name}}'
+      container:
+        image: docker.cancerdb.io/mgbio-workflow/pvactools:1.5.7
+        workingDir: "{{inputs.parameters.output-dir}}/pvacseq"
+        env:
+        - name: EPITOPE_LENGTH
+          value: "{{inputs.parameters.epitope-lengths}}"
+        - name: THREADS
+          value: "{{inputs.parameters.threads}}"
+        - name: NRML_SMPL_NME
+          value: "{{inputs.parameters.normal-sample-name}}"
+        - name: PHASED_VCF
+          value: "{{inputs.parameters.phased-proximal-variants-vcf}}"
+        - name: INPUT_VCF
+          value: "{{inputs.parameters.vcf}}"
+        - name: TUMR_SMPL_NME
+          value: "{{inputs.parameters.sample-name}}"
+        - name: ALLELES
+          value: "{{inputs.parameters.alleles}}"
+        - name: PREDICTION_ALGO
+          value: "{{inputs.parameters.prediction-algos}}"
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: '{{inputs.parameters.pvc-name}}'
+          mountPath: /data
+        - name: pvc-reference
+          mountPath: /ref-hg38
+#      outputs:
+#        parameters:
+#          - name: ###
+#            value: ###
+
+    #- name: ###
+    #  inputs:
+    #    parameters:
+    #    - name: pvc-name
+    #    - name: output-dir
+    #    - name: "cpu"
+    #    - name: "mem"
+    #    - name: threads
+    #    - name: ###
+    #    - name: ###
+    #    - name: ###
+    #  podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    #  volumes:
+    #    - name: '{{inputs.parameters.pvc-name}}'
+    #      persistentVolumeClaim:
+    #        claimName: '{{inputs.parameters.pvc-name}}'
+    #  container:
+    #    image: ##### docker.cancerdb.io/mgbio-workflow/
+    #    env:
+    #    - name: ###
+    #      value: ###
+    #    command: ['###']
+    #    args: ["###"]
+    #    imagePullPolicy: Always
+    #    volumeMounts:
+    #    - name: '{{inputs.parameters.pvc-name}}'
+    #      mountPath: /data
+    #    - name: pvc-reference
+    #      mountPath: /ref-hg38
+    #  outputs:
+    #    parameters:
+    #      - name: ###
+    #        value: ###
