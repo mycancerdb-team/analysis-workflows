@@ -259,7 +259,7 @@ spec:
     outputs:
       parameters:
         - name: bgzipped_output
-          value: "{{inputs.parameters.output-dir}}/normal_final/germline-filter/{{inputs.parameters.id}}_{{inputs.parameters.filename}}.gz"
+          value: "{{inputs.parameters.output-dir}}/normal_final/germline-filter/{{inputs.parameters.id}}_{{inputs.parameters.filename}}.vcf.gz"
   - name: limit-variants
     inputs:
       parameters:
