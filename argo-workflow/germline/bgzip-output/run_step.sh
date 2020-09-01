@@ -7,5 +7,7 @@ set -o nounset
 #ENV VARS
 #INPUTFILE
 #OUTPUTDIR
+#ID
+#FNAME
 
-/opt/htslib/bin/bgzip $INPUTFILE >> "${OUTPUTDIR}/normal_final/germline-filter/${INPUTFILE}.gz"
+/opt/htslib/bin/bgzip $INPUTFILE >> "${OUTPUTDIR}/normal_final/germline-filter/${ID}_${FNAME}.gz"
