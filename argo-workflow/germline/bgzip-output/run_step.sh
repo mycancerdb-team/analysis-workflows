@@ -10,4 +10,4 @@ set -o nounset
 #ID
 #FNAME
 
-/opt/htslib/bin/bgzip $INPUTFILE >> "${OUTPUTDIR}/normal_final/germline-filter/${ID}_${FNAME}.gz"
+/opt/htslib/bin/bgzip -c $INPUTFILE > "${OUTPUTDIR}/normal_final/germline-filter/${ID}_${FNAME}.vcf.gz"
