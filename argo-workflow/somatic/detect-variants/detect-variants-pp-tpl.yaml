@@ -127,6 +127,7 @@ spec:
       - name: min-base-quality
       - name: min-mapping-quality
       - name: prefix
+      - name: service #detect-variants
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -135,7 +136,7 @@ spec:
     container:
       image: docker.cancerdb.io/mgbio-workflow/bam-readcount:1.1.1
       command: ['/usr/bin/python']
-      args: ["/root/run_step.py", "{{inputs.parameters.vcf}}", "{{inputs.parameters.sample-name}}", "{{inputs.parameters.reference}}", "{{inputs.parameters.bam}}", "{{inputs.parameters.prefix}}", "{{inputs.parameters.output-dir}}/detect-variants/readcount", "{{inputs.parameters.min-base-quality}}", "{{inputs.parameters.min-mapping-quality}}"]
+      args: ["/root/run_step.py", "{{inputs.parameters.vcf}}", "{{inputs.parameters.sample-name}}", "{{inputs.parameters.reference}}", "{{inputs.parameters.bam}}", "{{inputs.parameters.prefix}}", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/readcount", "{{inputs.parameters.min-base-quality}}", "{{inputs.parameters.min-mapping-quality}}"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -145,9 +146,9 @@ spec:
     outputs:
       parameters:
         - name: snv_bam_readcount_tsv
-          value: "{{inputs.parameters.output-dir}}/detect-variants/readcount/{{inputs.parameters.prefix}}_{{inputs.parameters.sample-name}}_bam_readcount_snv.tsv"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/readcount/{{inputs.parameters.prefix}}_{{inputs.parameters.sample-name}}_bam_readcount_snv.tsv"
         - name: indel_bam_readcount_tsv
-          value: "{{inputs.parameters.output-dir}}/detect-variants/readcount/{{inputs.parameters.prefix}}_{{inputs.parameters.sample-name}}_bam_readcount_indel.tsv"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/readcount/{{inputs.parameters.prefix}}_{{inputs.parameters.sample-name}}_bam_readcount_indel.tsv"
   - name: vcf-readcount
     inputs:
       parameters:
@@ -160,6 +161,7 @@ spec:
       - name: data-type
       - name: sample-name
       - name: variant-type
+      - name: service #detect-variants
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -168,7 +170,7 @@ spec:
     container:
       image: griffithlab/vatools:3.1.0
       command: ['vcf-readcount-annotator']
-      args: ["{{inputs.parameters.vcf}}", "{{inputs.parameters.bam-readcount-tsv}}", "{{inputs.parameters.data-type}}", "-t", "{{inputs.parameters.variant-type}}", "-s", "{{inputs.parameters.sample-name}}", "-o", "{{inputs.parameters.output-dir}}/detect-variants/readcount/{{inputs.parameters.variant-type}}_{{inputs.parameters.sample-name}}_annotated.bam_readcount.vcf.gz"]
+      args: ["{{inputs.parameters.vcf}}", "{{inputs.parameters.bam-readcount-tsv}}", "{{inputs.parameters.data-type}}", "-t", "{{inputs.parameters.variant-type}}", "-s", "{{inputs.parameters.sample-name}}", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/readcount/{{inputs.parameters.variant-type}}_{{inputs.parameters.sample-name}}_annotated.bam_readcount.vcf.gz"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -178,7 +180,7 @@ spec:
     outputs:
       parameters:
         - name: annotated_bam_readcount_vcf
-          value: "{{inputs.parameters.output-dir}}/detect-variants/readcount/{{inputs.parameters.variant-type}}_{{inputs.parameters.sample-name}}_annotated.bam_readcount.vcf.gz"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/readcount/{{inputs.parameters.variant-type}}_{{inputs.parameters.sample-name}}_annotated.bam_readcount.vcf.gz"
   - name: variants-to-table
     inputs:
       parameters:
