@@ -29,7 +29,7 @@ spec:
     container:
       image: mgibio/rnaseq:1.0.0
       command: ['/usr/bin/java']
-      args: ["-Xmx10g", "-jar", "/opt/picard/picard.jar", "SamToFastq", "VALIDATION_STRINGENCY=SILENT", "I=", "{{inputs.parameters.bam-file}}", "F=", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/read1.fastq", "F2=", "{{inputs.parameters.output-dir}}/output/{{inputs.parameters.data-type}}_final/read2.fastq"]
+      args: ["-Xmx10g", "-jar", "/opt/picard/picard.jar", "SamToFastq", "VALIDATION_STRINGENCY=SILENT", "I=", "{{inputs.parameters.bam-file}}", "F=", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/read1.fastq", "F2=", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/read2.fastq"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -37,9 +37,9 @@ spec:
     outputs:
       parameters:
         - name: fastq1
-          value: "{{inputs.parameters.output-dir}}/output/{{inputs.parameters.data-type}}_final/read1.fastq"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/read1.fastq"
         - name: fastq2
-          value: "{{inputs.parameters.output-dir}}/output/{{inputs.parameters.data-type}}_final/read2.fastq"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/read2.fastq"
   - name: trim-reads
     inputs:
       parameters:
