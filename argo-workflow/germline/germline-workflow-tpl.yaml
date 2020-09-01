@@ -221,7 +221,7 @@ spec:
     outputs:
       parameters:
         - name: optitype_tsv
-          value: "{{inputs.parameters.output-dir}}/normal_final/{{inputs.parameters.optitype_name}}_result.tsv}"
+          value: "{{inputs.parameters.output-dir}}/normal_final/{{inputs.parameters.optitype_name}}_result.tsv"
         - name: optitype_plot
           value: "{{inputs.parameters.output-dir}}/normal_final/{{inputs.parameters.optitype_name}}_coverage_plot.pdf"
   - name: germ-bgzip
@@ -232,6 +232,8 @@ spec:
       - name: "mem"
       - name: input-file
       - name: output-dir
+      - name: id
+      - name: filename #vep_annotated
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -244,6 +246,10 @@ spec:
         value: "{{inputs.parameters.input-file}}"
       - name: OUTPUTDIR
         value: "{{inputs.parameters.output-dir}}"
+      - name: ID
+        value: "{{inputs.parameters.id}}"
+      - name: FNAME
+        value: "{{inputs.parameters.filename}}"
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -253,7 +259,7 @@ spec:
     outputs:
       parameters:
         - name: bgzipped_output
-          value: "{{inputs.parameters.output-dir}}/normal_final/germline-filter/{{inputs.parameters.input-file}}.gz"
+          value: "{{inputs.parameters.output-dir}}/normal_final/germline-filter/{{inputs.parameters.id}}_{{inputs.parameters.filename}}.gz"
   - name: limit-variants
     inputs:
       parameters:
@@ -313,5 +319,11 @@ spec:
         mountPath: /ref-hg38
     outputs:
       parameters:
-        - name: hla_list
-          value: "{{inputs.parameters.output-dir}}/hla/hla_calls.list"
+        - name: hla_calls_clinical
+          value: "{{inputs.parameters.output-dir}}/hla/hla_calls/clinical_calls.txt"
+        - name: hla_calls_consensus
+          value: "{{inputs.parameters.output-dir}}/hla/hla_calls/consensus_calls.txt"
+        - name: hla_calls_mismatched
+          value: "{{inputs.parameters.output-dir}}/hla/hla_calls/mismatched_calls.txt"
+        - name: hla_calls_optitype
+          value: "{{inputs.parameters.output-dir}}/hla/hla_calls/optitype_calls.txt"
