@@ -146,12 +146,9 @@ spec:
         persistentVolumeClaim:
           claimName: '{{inputs.parameters.pvc-name}}'
     container:
-      image: docker.cancerdb.io/mgbio-workflow/filter-vcf:1.0.0
-      env:
-      - name: VCF
-        value: "{{inputs.parameters.vcf}}"
-      - name: OUTPUTDIR
-        value: "{{inputs.parameters.output-dir}}"
+      image: mgibio/vep_helper-cwl:1.1.0
+      command: ['/usr/bin/perl']
+      args: ["/usr/bin/vcf_check.pl", "{{inputs.parameters.vcf}}", "{{inputs.parameters.output-dir}}/normal_final/germline-filter/coding_variant_filtered.vcf", "/usr/bin/perl", "/opt/vep/src/ensembl-vep/filter_vep", "--format", "vcf", "-o", "{{inputs.parameters.output-dir}}/normal_final/germline-filter/coding_variant_filtered.vcf", "--ontology", "--filter", "Consequence is coding_sequence_variant", "-i", "{{inputs.parameters.vcf}}"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
