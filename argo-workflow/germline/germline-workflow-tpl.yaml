@@ -158,7 +158,7 @@ spec:
     outputs:
       parameters:
         - name: filtered_vcf
-          value: "{{inputs.parameters.output-dir}}/normal_final/germline-filter/annotated.coding_variant_filtered.vcf"
+          value: "{{inputs.parameters.output-dir}}/normal_final/germline-filter/coding_variant_filtered.vcf"
 #gnomad-freq-filter
   - name: gnomad-freq-filter
     inputs:
