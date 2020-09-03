@@ -30,7 +30,7 @@ spec:
         image: mgibio/gatk-cwl:3.6.0
         workingDir: "{{inputs.parameters.output-dir}}/phasevcf"
         command: ['/usr/bin/java']
-        args: ["-Xmx8g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "CombineVariants", "--assumeIdenticalSamples", "-o", "{{inputs.parameters.output-dir}}/phasevcf/combined_somatic_plus_germline.vcf"]
+        args: ["-Xmx8g", "-jar", "/opt/GenomeAnalysisTK.jar", "-T", "CombineVariants", "--assumeIdenticalSamples", "-o", "{{inputs.parameters.output-dir}}/phasevcf/combined_somatic_plus_germline.vcf", "-R", "{{inputs.parameters.reference}}", "-V", "{{inputs.parameters.germ-vcf}}", "-V", "{{inputs.parameters.somatic-vcf}}"]
         imagePullPolicy: Always
         volumeMounts:
         - name: '{{inputs.parameters.pvc-name}}'
