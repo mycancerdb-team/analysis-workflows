@@ -196,7 +196,7 @@ spec:
     outputs:
       parameters:
       - name: gene_abundance
-        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.data-type}}_gene_abundance.tsv"
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/gene_abundance.tsv"
 ##############
   - name: merge-bams
     inputs:
