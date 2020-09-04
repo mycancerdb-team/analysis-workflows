@@ -101,6 +101,8 @@ spec:
           value: "{{inputs.parameters.alleles}}"
         - name: PREDICTION_ALGO
           value: "{{inputs.parameters.prediction-algos}}"
+        - name: OUTPUTDIR
+          value: "{{inputs.parameters.output-dir}}"
         imagePullPolicy: Always
         volumeMounts:
         - name: '{{inputs.parameters.pvc-name}}'
