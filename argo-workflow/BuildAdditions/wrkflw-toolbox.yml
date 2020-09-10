@@ -21,7 +21,7 @@ spec:
       - name: mcdb-bot
       containers:
       - name: wrkflw-tools
-        image: docker.cancerdb.io/mcdb-bots/fastq-bam:1.0.0
+        image: docker.cancerdb.io/mgbio-workflow/pvactools:1.5.7
         #resources:
         #  requests:
         #    memory: "60Gi"
@@ -30,22 +30,24 @@ spec:
         #    memory: "600Gi"
         #    cpu: "50"
         env:
-        - name: FASTQR1
-          value: "/data/samples/normal-exome/r1.fastq.gz"
-        - name: FASTQR2
-          value: "/data/samples/normal-exome/r2.fastq.gz"
-        - name: DATATYPE
-          value: "normal-exome"
+        - name: EPITOPE_LENGTH
+          value: "8,9,10,11"
+        - name: THREADS
+          value: "8"
+        - name: NRML_SMPL_NME
+          value: "mcdb001-normal-exome"
+        - name: PHASED_VCF
+          value: "/data/output/phasevcf/mcdb001_phased.vcf.gz"
+        - name: INPUT_VCF
+          value: "/data/output/pvacseq/annotated.expression.vcf.gz"
+        - name: TUMR_SMPL_NME
+          value: "mcdb001-tumor-exome"
+        - name: ALLELES
+          value: "/data/output/hla/hla_calls/consensus_calls.txt"
+        - name: PREDICTION_ALGO
+          value: "NetMHC"
         - name: OUTPUTDIR
           value: "/data/output"
-        - name: SAMPLEID
-          value: "mcdbtest"
-        - name: PLATFORMUNIT
-          value: "HJC52BBXX.1l"
-        - name: PLATFORM
-          value: "illuminal"
-        - name: SEQHOUSE
-          value: "Psomagen"
         command: ["/bin/bash", "-c", "--"]
         args: ["while true; do sleep 30; done;"]
         imagePullPolicy: Always
@@ -64,5 +66,5 @@ spec:
           readOnly: false
       - name: workflow-data-dev
         persistentVolumeClaim:
-          claimName: immuno-data-pvc-mcdbtest
+          claimName: immuno-data-pvc-mcdb001
           readOnly: false
