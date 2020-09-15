@@ -32,7 +32,7 @@ spec:
       container:
         image: griffithlab/vatools:3.1.0
         command: ['vcf-expression-annotator']
-        args: ["-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/annotated.expression.vcf.gz", "-s", "{{inputs.parameters.sample-name}}", "{{inputs.parameters.vcf}}", "{{inputs.parameters.expression-file}}", "{{inputs.parameters.expression-tool}}", "{{inputs.parameters.data-type}}"]
+        args: ["-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.data-type}}_annotated.expression.vcf.gz", "-s", "{{inputs.parameters.sample-name}}", "{{inputs.parameters.vcf}}", "{{inputs.parameters.expression-file}}", "{{inputs.parameters.expression-tool}}", "{{inputs.parameters.data-type}}"]
         imagePullPolicy: Always
         volumeMounts:
         - name: '{{inputs.parameters.pvc-name}}'
@@ -42,7 +42,7 @@ spec:
       outputs:
         parameters:
           - name: annotated_expression_vcf
-            value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/annotated.expression.vcf.gz"
+            value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.data-type}}_annotated.expression.vcf.gz"
     - name: pvacseq-workflow
       inputs:
         parameters:
@@ -82,7 +82,7 @@ spec:
           persistentVolumeClaim:
             claimName: '{{inputs.parameters.pvc-name}}'
       container:
-        image: docker.cancerdb.io/mgbio-workflow/pvactools:1.5.7
+        image: docker.cancerdb.io/mgbio-workflow/pvactools:1.5.9
         workingDir: "{{inputs.parameters.output-dir}}/pvacseq"
         env:
         - name: EPITOPE_LENGTH
