@@ -151,7 +151,7 @@ spec:
     container:
       image: mgibio/rnaseq:1.0.0
       command: ["/usr/bin/kallisto"]
-      args: ["quant",  "-i", "{{inputs.parameters.kallisto_index}}", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/kallisto", "-t", "{{inputs.parameters.threads}}", "-b", "100", "--fusion", "--fr-stranded", "{{inputs.parameters.trimmed_fastq1}}", "{{inputs.parameters.trimmed_fastq2}}"]
+      args: ["quant", "-t", "{{inputs.parameters.threads}}", "-b", "100", "--fusion", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/kallisto", "--rf-stranded", "-i", "{{inputs.parameters.kallisto_index}}", "{{inputs.parameters.trimmed_fastq1}}", "{{inputs.parameters.trimmed_fastq2}}"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
