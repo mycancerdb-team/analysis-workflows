@@ -639,6 +639,34 @@ spec:
       parameters:
         - name: indexed-cram
           value: "{{inputs.parameters.cram}}.crai"
+  - name: interval-list-expand
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: "cpu" #2
+      - name: "mem" #4g
+      - name: interval-list
+      - name: roi-padding #100
+      - name: id
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/picard-cwl:2.18.1
+      command: ['/usr/bin/java']
+      args: ["-Xmx4g", "-jar", "/usr/picard/picard.jar", "IntervalListTools", "OUTPUT=/ref-hg38/somatic_inputs/intervals/{{inputs.parameters.id}}.expanded.interval_list", "UNIQUE=TRUE", "INPUT={{inputs.parameters.interval-list}}", "PADDING={{inputs.parameters.roi-padding}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: expanded_interval_list
+          value: "/ref-hg38/somatic_inputs/intervals/{{inputs.parameters.id}}.expanded.interval_list"
   #- name: ###
   #  inputs:
   #    parameters:
