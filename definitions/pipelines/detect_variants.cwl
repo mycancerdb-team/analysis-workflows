@@ -22,8 +22,10 @@ inputs:
     normal_bam:
         type: File
         secondaryFiles: [.bai,^.bai]
-    interval_list:
+    roi_intervals:
         type: File
+        label: "roi_intervals: regions of interest in which variants will be called"
+        doc: "roi_intervals is a list of regions (in interval_list format) within which to call somatic variants"
     strelka_exome_mode:
         type: boolean
     strelka_cpu_reserved:

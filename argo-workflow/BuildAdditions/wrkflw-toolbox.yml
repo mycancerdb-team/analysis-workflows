@@ -21,7 +21,7 @@ spec:
       - name: mcdb-bot
       containers:
       - name: wrkflw-tools
-        image: docker.cancerdb.io/mgbio-workflow/pvactools:1.5.7
+        image: docker.cancerdb.io/mcdb-bots/bootstrap:mgbio
         #resources:
         #  requests:
         #    memory: "60Gi"
@@ -66,5 +66,5 @@ spec:
           readOnly: false
       - name: workflow-data-dev
         persistentVolumeClaim:
-          claimName: immuno-data-pvc-mcdb001
+          claimName: immuno-data-pvc-mcdb000
           readOnly: false

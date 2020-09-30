@@ -57,3 +57,5 @@ emit-ref-confidence: GVCF
 max-population-allele-freq: "gnomADe_AF < 0.05 or not gnomADe_AF"
 epitope-lengths: "8,9,10,11"
 pvac-prediction-algos: NetMHC
+reference_dict: /ref-hg38/reference_genome/all_sequences.dict
+roi-padding: 100

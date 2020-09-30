@@ -1,19 +1,19 @@
-id: mcdb005
+id: mcdb007
 ns: argo
 pvc: immuno-data-pvc
 size: 2000Gi
 output-dir: /data/output
 s3-gen-dir: RFS-000
-vault-name: s3://mcdb-vault005
-rna-fastq-r1: /data/samples/cancer-rna/James-Inglis-Jones-Cancer-RNA_1.fastq.gz
-rna-fastq-r2: /data/samples/cancer-rna/James-Inglis-Jones-Cancer-RNA_2.fastq.gz
-normal-fastq-r1: /data/samples/normal-exome/James-Inglis-Jones-Normal-Exome_R1.fastq.gz
-normal-fastq-r2: /data/samples/normal-exome/James-Inglis-Jones-Normal-Exome_R2.fastq.gz
-cancer-fastq-r1: /data/samples/tumor-exome/James-Inglis-Jones-Cancer-Exome_R1.fastq.gz
-cancer-fastq-r2: /data/samples/tumor-exome/James-Inglis-Jones-Cancer-Exome_R2.fastq.gz
-normal-readGroup: "@RG\tID:A\tSM:mcdb005-normal-exome\tPL:illumina"
-cancer-readGroup: "@RG\tID:A\tSM:mcdb005-tumor-exome\tPL:illumina"
-rna-readGroup: "SM:mcdb005-cancer-rna PL:illumina"
+vault-name: s3://mcdb-vault007
+rna-fastq-r1: /data/samples/cancer-rna/Christine-Klein-Cancer-RNA_1.fastq.gz
+rna-fastq-r2: /data/samples/cancer-rna/Christine-Klein-Cancer-RNA_2.fastq.gz
+normal-fastq-r1: /data/samples/normal-exome/Christine-Klein-Normal-Exome_R1.fastq.gz
+normal-fastq-r2: /data/samples/normal-exome/Christine-Klein-Normal-Exome_R2.fastq.gz
+cancer-fastq-r1: /data/samples/tumor-exome/Christine-Klein-Cancer-Exome_R1.fastq.gz
+cancer-fastq-r2: /data/samples/tumor-exome/Christine-Klein-Cancer-Exome_R2.fastq.gz
+normal-readGroup: "@RG\tID:A\tSM:mcdb007-normal-exome\tPL:illumina"
+cancer-readGroup: "@RG\tID:A\tSM:mcdb007-tumor-exome\tPL:illumina"
+rna-readGroup: "SM:mcdb007-cancer-rna PL:illumina"
 genome-reference: /ref-hg38/reference_genome/all_sequences.fa
 bqsr-intervals: "-L chr1 -L chr2 -L chr3 -L chr4 -L chr5 -L chr6 -L chr7 -L chr8 -L chr9 -L chr10 -L chr11 -L chr12 -L chr13 -L chr14 -L chr15 -L chr16 -L chr17 -L chr18 -L chr19 -L chr20 -L chr21 -L chr22"
 known-indels: /ref-hg38/somatic_inputs/indels.hq.vcf.gz
@@ -40,8 +40,8 @@ somalier-vcf: /ref-hg38/somatic_inputs/GRC-human-build38_gnomad_exome_common_snp
 exome-interval-list: /ref-hg38/somatic_inputs/intervals/exome.interval_list
 filter-docm-variants: true
 scatter-count: 50
-tumor-sample-name: mcdb005-tumor-exome
-normal-sample-name: mcdb005-normal-exome
+tumor-sample-name: mcdb007-tumor-exome
+normal-sample-name: mcdb007-normal-exome
 docm-vcf: /ref-hg38/somatic_inputs/docm.hq.vcf.gz
 sequence-platform-unit: HJC52BBXX.1
 sequence-platform: illumina

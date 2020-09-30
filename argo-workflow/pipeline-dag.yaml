@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  generateName: mcdb-mgbio-pipeline
+  generateName: mcdb-mgbio-mcdb005
 spec:
   volumes:
     - name: pvc-reference
@@ -1371,6 +1371,26 @@ spec:
               value: "{{tasks.normal-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
             - name: vcf-ref
               value: "{{workflow.parameters.somalier-vcf}}"
+### Pad
+      - name: pad-target-intervals
+        dependencies: [bootstrap-data]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: interval-list-expand
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "2"
+            - name: "mem"
+              value: "4Gi"
+            - name: interval-list
+              value: "{{workflow.parameters.target-intervals}}"
+            - name: roi-padding
+              value: "{{workflow.parameters.roi-padding}}"
+            - name: id
+              value: "{{workflow.parameters.id}}"
 ##cnv-kit
       - name: cnv-kit
         dependencies: [cancer-index-bam,normal-index-bam]
@@ -1513,7 +1533,7 @@ spec:
 #dependencies: [normal-index-bam,cancer-index-bam]
 ##MUTECT BLOCK
       - name: mutect-split-interval-list
-        dependencies: [normal-index-bam,cancer-index-bam]
+        dependencies: [normal-index-bam,cancer-index-bam,pad-target-intervals]
         templateRef:
           name: immuno-somatic-exome-detect-vars
           template: split-interval-list
@@ -1528,7 +1548,7 @@ spec:
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: interval-list
-              value: "{{workflow.parameters.exome-interval-list}}"
+              value: "{{tasks.pad-target-intervals.outputs.parameters.expanded_interval_list}}"
             - name: scatter-count
               value: "{{workflow.parameters.scatter-count}}"
             - name: service
@@ -1757,7 +1777,7 @@ spec:
               value: "{{tasks.bgzip-mutect-fpfilter.outputs.parameters.bgzipped_output}}"
 ## hard-filter // output=filtered_vcf
       - name: mutect-hard-filter
-        dependencies: [mutect-index-fp-vcf]
+        dependencies: [mutect-index-fp-vcf,pad-target-intervals]
         templateRef:
           name: immuno-somatic-exome-workflow
           template: fp-filter-select-variants
@@ -1780,7 +1800,7 @@ spec:
             - name: vcf-ref
               value: "{{tasks.bgzip-mutect-fpfilter.outputs.parameters.bgzipped_output}}"
             - name: target-intervals
-              value: "{{workflow.parameters.target-intervals}}"
+              value: "{{tasks.pad-target-intervals.outputs.parameters.expanded_interval_list}}"
 ###END Mutect // FP-Filter steps
 ## END MUTECT BLOCK
 
@@ -2017,7 +2037,7 @@ spec:
             - name: vcf
               value: "{{tasks.strelka-rename-normal.outputs.parameters.renamed_vcf}}"
       - name: strelka-region-filter
-        dependencies: [index-strelka-vcf]
+        dependencies: [index-strelka-vcf,pad-target-intervals]
         templateRef:
           name: immuno-somatic-exome-workflow
           template: select-variants
@@ -2040,7 +2060,7 @@ spec:
             - name: vcf-ref
               value: "{{tasks.strelka-rename-normal.outputs.parameters.renamed_vcf}}"
             - name: target-intervals
-              value: "{{workflow.parameters.target-intervals}}"
+              value: "{{tasks.pad-target-intervals.outputs.parameters.expanded_interval_list}}"
 ## Fp filter workflow
 ## Input tasks.strelka-region-filter.outputs.parameters.filtered_vcf
 ### Strelka // FP-Filter steps
@@ -2204,7 +2224,7 @@ spec:
               value: "{{tasks.bgzip-strelka-fpfilter.outputs.parameters.bgzipped_output}}"
 ## hard-filter // output=filtered_vcf
       - name: strelka-hard-filter
-        dependencies: [strelka-index-fp-vcf]
+        dependencies: [strelka-index-fp-vcf,pad-target-intervals]
         templateRef:
           name: immuno-somatic-exome-workflow
           template: fp-filter-select-variants
@@ -2227,13 +2247,13 @@ spec:
             - name: vcf-ref
               value: "{{tasks.bgzip-strelka-fpfilter.outputs.parameters.bgzipped_output}}"
             - name: target-intervals
-              value: "{{workflow.parameters.target-intervals}}"
+              value: "{{tasks.pad-target-intervals.outputs.parameters.expanded_interval_list}}"
 ###END Strelka // FP-Filter steps
 ### End Strelka Block
 
 ## Begin Varscan Block
       - name: varscan-int-to-bed
-        dependencies: [normal-index-bam,cancer-index-bam]
+        dependencies: [normal-index-bam,cancer-index-bam,pad-target-intervals]
         templateRef:
           name: immuno-somatic-exome-detect-vars
           template: intervals-to-bed
@@ -2250,7 +2270,7 @@ spec:
             - name: service
               value: "varscan"
             - name: interval-list
-              value: "{{workflow.parameters.target-intervals}}"
+              value: "{{tasks.pad-target-intervals.outputs.parameters.expanded_interval_list}}"
       - name: varscan-workflow
         dependencies: [varscan-int-to-bed]
         templateRef:
@@ -2697,7 +2717,7 @@ spec:
               value: "{{tasks.bgzip-varscan-fpfilter.outputs.parameters.bgzipped_output}}"
 ## hard-filter // output=filtered_vcf
       - name: varscan-hard-filter
-        dependencies: [varscan-index-fp-vcf]
+        dependencies: [varscan-index-fp-vcf,pad-target-intervals]
         templateRef:
           name: immuno-somatic-exome-workflow
           template: fp-filter-select-variants
@@ -2720,13 +2740,13 @@ spec:
             - name: vcf-ref
               value: "{{tasks.bgzip-varscan-fpfilter.outputs.parameters.bgzipped_output}}"
             - name: target-intervals
-              value: "{{workflow.parameters.target-intervals}}"
+              value: "{{tasks.pad-target-intervals.outputs.parameters.expanded_interval_list}}"
 ###END Varscan // FP-Filter steps
 ## End Varscan Block
 
 ## Begin Pindel Block
       - name: pindel-split-interval-list-to-bed
-        dependencies: [normal-index-bam,cancer-index-bam]
+        dependencies: [normal-index-bam,cancer-index-bam,pad-target-intervals]
         templateRef:
           name: immuno-somatic-exome-detect-vars
           template: split-interval-list-to-bed
@@ -2741,7 +2761,7 @@ spec:
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: interval-list
-              value: "{{workflow.parameters.exome-interval-list}}"
+              value: "{{tasks.pad-target-intervals.outputs.parameters.expanded_interval_list}}"
             - name: scatter-count
               value: "{{workflow.parameters.scatter-count}}"
             - name: service
@@ -3104,7 +3124,7 @@ spec:
               value: "{{tasks.bgzip-pindel-fpfilter.outputs.parameters.bgzipped_output}}"
 ## hard-filter // output=filtered_vcf
       - name: pindel-hard-filter
-        dependencies: [pindel-index-fp-vcf]
+        dependencies: [pindel-index-fp-vcf,pad-target-intervals]
         templateRef:
           name: immuno-somatic-exome-workflow
           template: fp-filter-select-variants
@@ -3127,13 +3147,13 @@ spec:
             - name: vcf-ref
               value: "{{tasks.bgzip-pindel-fpfilter.outputs.parameters.bgzipped_output}}"
             - name: target-intervals
-              value: "{{workflow.parameters.target-intervals}}"
+              value: "{{tasks.pad-target-intervals.outputs.parameters.expanded_interval_list}}"
 ###END Pindel // FP-Filter steps
 ## End Pindel Block
 
 ## Begin DOCM Block
       - name: docm-haplotyper
-        dependencies: [normal-index-bam,cancer-index-bam]
+        dependencies: [normal-index-bam,cancer-index-bam,pad-target-intervals]
         templateRef:
           name: immuno-somatic-exome-detect-vars
           template: docm-haplotyper
@@ -3156,7 +3176,7 @@ spec:
             - name: docm-vcf
               value: "{{workflow.parameters.docm-vcf}}"
             - name: interval-list
-              value: "{{workflow.parameters.exome-interval-list}}"
+              value: "{{tasks.pad-target-intervals.outputs.parameters.expanded_interval_list}}"
       - name: bgzip-docm-haplotype-vcf
         dependencies: [docm-haplotyper]
         templateRef:
@@ -3744,7 +3764,7 @@ spec:
             - name: id
               value: "{{workflow.parameters.id}}"
             - name: threshold
-              value: 5
+              value: "5.0"
             - name: cancer-sample-name
               value: "{{workflow.parameters.tumor-sample-name}}"
             - name: normal-sample-name
@@ -4291,7 +4311,7 @@ spec:
               value: "{{tasks.phasevcf-rename-vcf.outputs.parameters.renamed_vcf}}"
 # select vars
       - name: phase-select-variants
-        dependencies: [detect-variants-index-vcf]
+        dependencies: [index-annotated-filtered-vcf]
         templateRef:
           name: immuno-phasevcf-workflow
           template: select-somatic-variants
@@ -4312,7 +4332,7 @@ spec:
             - name: reference
               value: "{{workflow.parameters.genome-reference}}"
             - name: vcf-ref
-              value: "{{tasks.add-normal-bam-readcount-indel.outputs.parameters.annotated_bam_readcount_vcf}}"
+              value: "{{tasks.bgzip-annotated-filtered-vcf.outputs.parameters.bgzipped_output}}"
             - name: sample-name
               value: "{{workflow.parameters.tumor-sample-name}}"
 # index vars
@@ -4491,7 +4511,7 @@ spec:
 #tumor_rna_bam_readcount
 #normalize
       - name: normalize-pvac-vcf
-        dependencies: [detect-variants-index-vcf]
+        dependencies: [index-annotated-filtered-vcf]
         templateRef:
           name: immuno-somatic-exome-detect-vars
           template: normalize-vars
@@ -4512,7 +4532,7 @@ spec:
             - name: id
               value: "{{workflow.parameters.id}}"
             - name: vcf
-              value: "{{tasks.add-normal-bam-readcount-indel.outputs.parameters.annotated_bam_readcount_vcf}}"
+              value: "{{tasks.bgzip-annotated-filtered-vcf.outputs.parameters.bgzipped_output}}"
 #decompose
 ## decompose vars
       - name: pvac-decompose
@@ -4705,7 +4725,7 @@ spec:
               value: "{{tasks.pvacseq-add-transcript-expression.outputs.parameters.annotated_expression_vcf}}"
 #pvacseq
       - name: pvacseq-workflow
-        dependencies: [index-pvac-transcript-vcf,hla-extract-and-consensus,bgzip-phased-vcf]
+        dependencies: [index-pvac-transcript-vcf,hla-extract-and-consensus,index-phased-vcf]
         templateRef:
           name: immuno-pvacseq-workflow
           template: pvacseq-workflow
