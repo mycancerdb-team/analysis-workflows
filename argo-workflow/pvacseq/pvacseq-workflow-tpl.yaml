@@ -30,7 +30,7 @@ spec:
           persistentVolumeClaim:
             claimName: '{{inputs.parameters.pvc-name}}'
       container:
-        image: griffithlab/vatools:3.1.0
+        image: ggriffithlab/vatools:3.1.0
         command: ['vcf-expression-annotator']
         args: ["-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.data-type}}_annotated.expression.vcf.gz", "-s", "{{inputs.parameters.sample-name}}", "{{inputs.parameters.vcf}}", "{{inputs.parameters.expression-file}}", "{{inputs.parameters.expression-tool}}", "{{inputs.parameters.data-type}}"]
         imagePullPolicy: Always
@@ -52,30 +52,13 @@ spec:
         - name: "mem"
         - name: threads
         - name: vcf #index/indexed_vcf
+        - name: id
         - name: sample-name
         - name: alleles #allele string
         - name: prediction-algos #prediction_algorithms
         - name: epitope-lengths
         - name: normal-sample-name
         - name: phased-proximal-variants-vcf
-        #- name: minimum-fold-change
-        #- name: peptide-sequence-length
-        #- name: top-score-metric
-        #- name: additional-report-columns
-        #- name: fasta-size
-        #- name: downstream-sequence-length
-        #- name: exclude-nas
-        #- name: maximum-transcript-support-level
-        #- name: normal-cov
-        #- name: tdna-cov
-        #- name: trna-cov
-        #- name: normal-vaf
-        #- name: tdna-vaf
-        #- name: trna-vaf
-        #- name: expn-val
-        #- name: net-chop-method
-        #- name: net-chop-threshold
-        #- name: netmhc-stab
       podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
       volumes:
         - name: '{{inputs.parameters.pvc-name}}'
@@ -109,12 +92,326 @@ spec:
           mountPath: /data
         - name: pvc-reference
           mountPath: /ref-hg38
+      outputs:
+        parameters:
+          - name: all_epitopes
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.all_epitopes"
+          - name: filtered_ranked_epitopes
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.filtered.condensed.ranked.tsv"
+          - name: filtered_epitopes
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.filtered.tsv"
+          - name: proximal_variants
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.proximal_variants.tsv"
+          - name: tumor_exome
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.tsv"
+  - name: pvacseq-reporter
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: epitope-file
+      - name: service
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/pvac-report:1.0.0
+      workingDir: "/root"
+      command: ["/usr/local/bin/Rscript"]
+      args: ["/root/ranking.R", "{{inputs.parameters.epitope-file}}", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/immuno_ranked_epitopes.tsv"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+      - name: ranked_epitopes
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/immuno_ranked_epitopes.tsv"
+  - name: pvacseq-workflow-expanded
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: threads
+      - name: vcf #index/indexed_vcf
+      - name: id
+      - name: sample-name
+      - name: alleles #allele string
+      - name: prediction-algos #prediction_algorithms
+      - name: epitope-lengths
+      - name: normal-sample-name
+      - name: phased-proximal-variants-vcf
+      - name: binding-threshold
+      - name: downstream-sequence-length
+      - name: minimum-fold-change
+      - name: net-chop-method
+      - name: peptide-sequence-length
+      - name: top-score-metric
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/pvactools:1.5.9
+      workingDir: "{{inputs.parameters.output-dir}}/pvacseq"
+      env:
+      - name: EPITOPE_LENGTH
+        value: "{{inputs.parameters.epitope-lengths}}"
+      - name: THREADS
+        value: "{{inputs.parameters.threads}}"
+      - name: NRML_SMPL_NME
+        value: "{{inputs.parameters.normal-sample-name}}"
+      - name: PHASED_VCF
+        value: "{{inputs.parameters.phased-proximal-variants-vcf}}"
+      - name: INPUT_VCF
+        value: "{{inputs.parameters.vcf}}"
+      - name: TUMR_SMPL_NME
+        value: "{{inputs.parameters.sample-name}}"
+      - name: ALLELES
+        value: "{{inputs.parameters.alleles}}"
+      - name: PREDICTION_ALGO
+        value: "{{inputs.parameters.prediction-algos}}"
+      - name: OUTPUTDIR
+        value: "{{inputs.parameters.output-dir}}"
+      - name: BINDING_THRSHLD
+        value: "{{inputs.parameters.binding-threshold}}"
+      - name: DWNSTREAM_SQ_LNGTH
+        value: "{{inputs.parameters.downstream-sequence-length}}"
+      - name: MIN_FOLD_CHNGE
+        value: "{{inputs.parameters.minimum-fold-change}}"
+      - name: NET_CHOP_MTHD
+        value: "{{inputs.parameters.net-chop-method}}"
+      - name: PEP_SEQ_LNGTH
+        value: "{{inputs.parameters.peptide-sequence-length}}"
+      - name: TOP_SCORE_MTRC
+        value: "{{inputs.parameters.top-score-metric}}"
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: class_1_all_epitopes
+          value: "{{inputs.parameters.output-dir}}/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.all_epitopes"
+        - name: class_1_filtered_ranked_epitopes
+          value: "{{inputs.parameters.output-dir}}/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.filtered.condensed.ranked.tsv"
+        - name: class_1_filtered_epitopes
+          value: "{{inputs.parameters.output-dir}}/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.filtered.tsv"
+        - name: class_1_proximal_variants
+          value: "{{inputs.parameters.output-dir}}/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.proximal_variants.tsv"
+        - name: class_1_tumor_exome
+          value: "{{inputs.parameters.output-dir}}/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.tsv"
+        - name: class_2_all_epitopes
+          value: "{{inputs.parameters.output-dir}}/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.id}}-tumor-exome.all_epitopes"
+        - name: class_2_filtered_ranked_epitopes
+          value: "{{inputs.parameters.output-dir}}/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.id}}-tumor-exome.filtered.condensed.ranked.tsv"
+        - name: class_2_filtered_epitopes
+          value: "{{inputs.parameters.output-dir}}/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.id}}-tumor-exome.filtered.tsv"
+        - name: class_2_proximal_variants
+          value: "{{inputs.parameters.output-dir}}/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.id}}-tumor-exome.proximal_variants.tsv"
+        - name: class_2_tumor_exome
+          value: "{{inputs.parameters.output-dir}}/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.id}}-tumor-exome.tsv"
+        - name: combined_all_epitopes
+          value: "{{inputs.parameters.output-dir}}/pvacseq_predictionscombined/{{inputs.parameters.id}}-tumor-exome.all_epitopes"
+        - name: combined_filtered_ranked_epitopes
+          value: "{{inputs.parameters.output-dir}}/pvacseq_predictions/combined/{{inputs.parameters.id}}-tumor-exome.filtered.condensed.ranked.tsv"
+        - name: combined_filtered_epitopes
+          value: "{{inputs.parameters.output-dir}}/pvacseq_predictions/combined/{{inputs.parameters.id}}-tumor-exome.filtered.tsv"
+        - name: combined_proximal_variants
+          value: "{{inputs.parameters.output-dir}}/pvacseq_predictions/combined/{{inputs.parameters.id}}-tumor-exome.proximal_variants.tsv"
+        - name: combined_tumor_exome
+          value: "{{inputs.parameters.output-dir}}/pvacseq_predictions/combined/{{inputs.parameters.id}}-tumor-exome.tsv"
+##pvac binding filter
+  - name: pvac-binding-filter
+      inputs:
+        parameters:
+        - name: pvc-name
+        - name: output-dir
+        - name: "cpu"
+        - name: "mem"
+        - name: top-score-metric #median
+        - name: all-epitopes #wrkflw input
+      podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+      volumes:
+        - name: '{{inputs.parameters.pvc-name}}'
+          persistentVolumeClaim:
+            claimName: '{{inputs.parameters.pvc-name}}'
+      container:
+        image: griffithlab/pvactools:1.5.9
+        command: ['pvacseq'] ## pvacseq binding_filter -m median all_epitopes.tsv all_epitopes_binding_filter.tsv
+        args: ["binding_filter","-m","{{inputs.parameters.top-metric-score}}", "{{inputs.parameters.all_epitopes}}" "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes_binding_filter.tsv"]
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: '{{inputs.parameters.pvc-name}}'
+          mountPath: /data
+        - name: pvc-reference
+          mountPath: /ref-hg38
+      outputs:
+        parameters:
+          - name: all_epitopes_binding_filter
+            value: "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes_binding_filter.tsv"
+##pvac coverage filter
+  - name: pvac-coverage-filter
+      inputs:
+        parameters:
+        - name: pvc-name
+        - name: output-dir
+        - name: "cpu"
+        - name: "mem"
+        - name: normal-cov #100
+        - name: tdna-cov #100
+        - name: trna-cov #10
+        - name: normal-vaf #0.01
+        - name: tdna-vaf #0.15
+        - name: trna-vaf #0.15
+        - name: all-epitopes #wrkflw input
+      podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+      volumes:
+        - name: '{{inputs.parameters.pvc-name}}'
+          persistentVolumeClaim:
+            claimName: '{{inputs.parameters.pvc-name}}'
+      container:
+        image: griffithlab/pvactools:1.5.9
+        command: ['pvacseq'] ## pvacseq coverage_filter --normal-cov 100 --tdna-cov 100 --trna-cov 10 --normal-vaf 0.01 --tdna-vaf 0.15 --trna-vaf 0.15 all_epitopes_binding_filter.tsv all_epitopes _coverage_filter.tsv
+        args: ["coverage_filter", "--normal-cov", "{{inputs.paramaters.normal-cov}}", "--tdna-cov", "{{inputs.paramaters.tdna-cov}}", "--trna-cov", "{{inputs.paramaters.trna-cov}}", "--normal-vaf", "{{inputs.paramaters.normal-vaf}}", "--tdna-vaf", "{{inputs.paramaters.tdna-vaf}}", "--trna-vaf", "{{inputs.paramaters.trna-vaf}}", "{{inputs.paramaters.all-epitopes}}", "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes_coverage_filter.tsv"]
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: '{{inputs.parameters.pvc-name}}'
+          mountPath: /data
+        - name: pvc-reference
+          mountPath: /ref-hg38
+      outputs:
+        parameters:
+          - name: all_epitopes_coverage_filter
+            value: "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes_coverage_filter.tsv"
+##pvac transcript_spprt_lvl_filter
+  - name: pvac-tsl-filter
+      inputs:
+        parameters:
+        - name: pvc-name
+        - name: output-dir
+        - name: "cpu"
+        - name: "mem"
+        - name: maximum-transcript-support-level #1
+        - name: all-epitopes
+      podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+      volumes:
+        - name: '{{inputs.parameters.pvc-name}}'
+          persistentVolumeClaim:
+            claimName: '{{inputs.parameters.pvc-name}}'
+      container:
+        image: griffithlab/pvactools:1.5.9
+        command: ['pvacseq'] ## pvacseq transcript_support_level_filter --maximum-transcript-support-level 1 all_epitopes _coverage_filter.tsv all_epitopes_TSL_filter.tsv
+        args: ["transcript_support_level_filter", "--maximum-transcript-support-level", "{{inputs.parameters.maximum-transcript-support-level}}", "{{inputs.parameters.all_epitopes}}", "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes_TSL_filter.tsv"]
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: '{{inputs.parameters.pvc-name}}'
+          mountPath: /data
+        - name: pvc-reference
+          mountPath: /ref-hg38
+      outputs:
+        parameters:
+          - name: all_epitopes_tsl_filter
+            value: "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes_TSL_filter.tsv"
+##pvac top score filter
+  - name: pvac-top-filter
+      inputs:
+        parameters:
+        - name: pvc-name
+        - name: output-dir
+        - name: "cpu"
+        - name: "mem"
+        - name: top-score-metric #median
+        - name: all-epitopes
+      podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+      volumes:
+        - name: '{{inputs.parameters.pvc-name}}'
+          persistentVolumeClaim:
+            claimName: '{{inputs.parameters.pvc-name}}'
+      container:
+        image: griffithlab/pvactools:1.5.9
+        command: ['pvacseq'] ## pvacseq top_score_filter -m median all_epitopes_TSL_filter.tsv all_epitopes_all_filters.tsv
+        args: ["top_score_filter", "-m", "{{inputs.parameters.top-score-metric}}", "{{inputs.parameters.all_epitopes}}", "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes_all_filters.tsv"]
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: '{{inputs.parameters.pvc-name}}'
+          mountPath: /data
+        - name: pvc-reference
+          mountPath: /ref-hg38
+      outputs:
+        parameters:
+          - name: all_epitopes_top_filter
+            value: "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes_all_filters.tsv"
+##pvac generated condensed ranked report
+  - name: pvac-condensed-report
+      inputs:
+        parameters:
+        - name: pvc-name
+        - name: output-dir
+        - name: "cpu"
+        - name: "mem"
+        - name: top-score-metric #median
+        - name: all-epitopes
+      podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+      volumes:
+        - name: '{{inputs.parameters.pvc-name}}'
+          persistentVolumeClaim:
+            claimName: '{{inputs.parameters.pvc-name}}'
+      container:
+        image: griffithlab/pvactools:1.5.9
+        command: ['pvacseq'] ## pvacseq generate_condensed_ranked_report -m median all_epitopes_all_filters.tsv all_epitopes.filtered.condensed.ranked.tsv
+        args: ["generate_condensed_ranked_report", "-m", "{{inputs.parameters.top-score-metric}}", "{{inputs.parameters.all_epitopes}}", "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes.filtered.condensed.ranked.tsv"]
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: '{{inputs.parameters.pvc-name}}'
+          mountPath: /data
+        - name: pvc-reference
+          mountPath: /ref-hg38
+      outputs:
+        parameters:
+          - name: all_epitopes_condensed_report
+            value: "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes.filtered.condensed.ranked.tsv"
+#  - name: pvac-
+#      inputs:
+#        parameters:
+#        - name: pvc-name
+#        - name: output-dir
+#        - name: "cpu"
+#        - name: "mem"
+#        - name: ###
+#        - name: ###
+#        - name: ###
+#      podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+#      volumes:
+#        - name: '{{inputs.parameters.pvc-name}}'
+#          persistentVolumeClaim:
+#            claimName: '{{inputs.parameters.pvc-name}}'
+#      container:
+#        image: griffithlab/pvactools:1.5.9
+#        command: ['###'] ## pvacseq binding_filter -m median all_epitopes.tsv all_epitopes_binding_filter.tsv
+#        args: ["###"]
+#        imagePullPolicy: Always
+#        volumeMounts:
+#        - name: '{{inputs.parameters.pvc-name}}'
+#          mountPath: /data
+#        - name: pvc-reference
+#          mountPath: /ref-hg38
 #      outputs:
 #        parameters:
 #          - name: ###
 #            value: ###
-
-    #- name: ###
+  #- name: ###
     #  inputs:
     #    parameters:
     #    - name: pvc-name
