@@ -59,3 +59,15 @@ epitope-lengths: "8,9,10,11"
 pvac-prediction-algos: NetMHC
 reference_dict: /ref-hg38/reference_genome/all_sequences.dict
 roi-padding: 100
+binding-threshold: 500
+downstream-sequence-length: 100
+minimum-fold-change: 1.0
+net-chop-method: cterm
+peptide-sequence-length: 21
+top-score-metric: lowest
+pvac-normal-coverage: 100
+pvac-tdna-coverage: 100
+pvac-trna-coverage: 10
+pvac-normal-vaf: 0.01
+pvac-tdna-vaf: 0.15
+pvac-trna-vaf: 0.15
