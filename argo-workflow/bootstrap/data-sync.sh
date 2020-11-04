@@ -11,7 +11,7 @@ aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/cancer-exome/" "${OUTPUTDIR}/samples/tu
 aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/somatic-exome/" "${OUTPUTDIR}/samples/normal-exome/" --recursive
 aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/cancer-rna/" "${OUTPUTDIR}/samples/cancer-rna/" --recursive
 #General Folders
-mkdir -p ${OUTPUTDIR}/output/{select_variants,hla,phasevcf,pvacseq/{temp,pvacseq_predictions,normalized,decom,readcount},mutect/{split-ints,sani,normalized,fpfilter,decom},final,strelka/{indels,snv,sani,normalized,fpfilter,decom,rename},varscan/{variants,indels,snv,sani,normalized,fpfilter,decom,rename},pindel/{split-beds,sani,normalized,fpfilter,decom},docm/{raw,decom},detect-variants/{decom,readcount,final},cnvkit,manta,logs,samples/{tumor-exome,normal-exome,cancer-rna}}
+mkdir -p ${OUTPUTDIR}/output/{select_variants,hla,phasevcf,pvacseq/{temp,pvacseq_predictions,normalized,decom,readcount,final},mutect/{split-ints,sani,normalized,fpfilter,decom},final/{pvacseq_predictions,pvac-filters},strelka/{indels,snv,sani,normalized,fpfilter,decom,rename},varscan/{variants,indels,snv,sani,normalized,fpfilter,decom,rename},pindel/{split-beds,sani,normalized,fpfilter,decom},docm/{raw,decom},detect-variants/{decom,readcount,final},cnvkit,manta,logs,samples/{tumor-exome,normal-exome,cancer-rna}}
 #RNA Folders
 mkdir -p ${OUTPUTDIR}/output/{rna_final,rna_trimmed_read,rna_hisat2_align/aligned_bam,rna_merged_bam,rna_index_bam}
 #Normal Folders
