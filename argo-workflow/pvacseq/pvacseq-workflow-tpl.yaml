@@ -30,7 +30,7 @@ spec:
           persistentVolumeClaim:
             claimName: '{{inputs.parameters.pvc-name}}'
       container:
-        image: ggriffithlab/vatools:3.1.0
+        image: griffithlab/vatools:3.1.0
         command: ['vcf-expression-annotator']
         args: ["-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/{{inputs.parameters.data-type}}_annotated.expression.vcf.gz", "-s", "{{inputs.parameters.sample-name}}", "{{inputs.parameters.vcf}}", "{{inputs.parameters.expression-file}}", "{{inputs.parameters.expression-tool}}", "{{inputs.parameters.data-type}}"]
         imagePullPolicy: Always
