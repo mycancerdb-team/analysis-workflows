@@ -324,3 +324,39 @@ spec:
           value: "{{inputs.parameters.output-dir}}/hla/hla_calls/mismatched_calls.txt"
         - name: hla_calls_optitype
           value: "{{inputs.parameters.output-dir}}/hla/hla_calls/optitype_calls.txt"
+#HLA TYPE 2
+  - name: hla-phlat
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: "cpu"
+      - name: "mem"
+      - name: bam
+      - name: output-dir
+      - name: sample-name
+      - name: reference
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/hla-phlat:1.0.0
+      workingDir: "{{inputs.parameters.output-dir}}/hla"
+      env:
+      - name: SMPLE
+        value: "{{inputs.parameters.sample-name}}"
+      - name: BAM
+        value: "{{inputs.parameters.bam}}"
+      - name: REF_FILE
+        value: "{{inputs.parameters.reference}}"
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: hla_summary
+          value: "{{inputs.parameters.output-dir}}/hla/{{inputs.parameters.sample-name}}/results/{{inputs.parameters.sample-name}}_HLA.sum"
