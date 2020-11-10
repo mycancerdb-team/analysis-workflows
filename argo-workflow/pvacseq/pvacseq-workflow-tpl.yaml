@@ -121,7 +121,7 @@ spec:
       container:
         image: docker.cancerdb.io/mgbio-workflow/pvac-report:1.0.0
         workingDir: "/root"
-        command: ["/usr/local/bin/Rscript"]
+        command: ["Rscript"]
         args: ["/root/ranking.R", "{{inputs.parameters.epitope-file}}", "{{inputs.parameters.output-dir}}/{{inputs.parameters.service}}/immuno_ranked_epitopes.tsv"]
         imagePullPolicy: Always
         volumeMounts:
@@ -223,7 +223,7 @@ spec:
           - name: class_2_tumor_exome
             value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.id}}-tumor-exome.tsv"
           - name: combined_all_epitopes
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictionscombined/{{inputs.parameters.id}}-tumor-exome.all_epitopes"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/combined/{{inputs.parameters.id}}-tumor-exome.all_epitopes"
           - name: combined_filtered_ranked_epitopes
             value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/combined/{{inputs.parameters.id}}-tumor-exome.filtered.condensed.ranked.tsv"
           - name: combined_filtered_epitopes
