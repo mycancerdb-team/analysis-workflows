@@ -242,6 +242,7 @@ spec:
         - name: "mem"
         - name: top-score-metric #median
         - name: all-epitopes #wrkflw input
+        - name: mhc-class
       podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
       volumes:
         - name: '{{inputs.parameters.pvc-name}}'
@@ -250,7 +251,7 @@ spec:
       container:
         image: griffithlab/pvactools:1.5.9
         command: ["pvacseq"] ## pvacseq binding_filter -m median all_epitopes.tsv all_epitopes_binding_filter.tsv
-        args: ["binding_filter","-m","{{inputs.parameters.top-score-metric}}", "{{inputs.parameters.all-epitopes}}","{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes_binding_filter.tsv"]
+        args: ["binding_filter","-m","{{inputs.parameters.top-score-metric}}", "{{inputs.parameters.all-epitopes}}","{{inputs.parameters.output-dir}}/final/{{inputs.parameters.mhc-class}}/all_epitopes_binding_filter.tsv"]
         imagePullPolicy: Always
         volumeMounts:
         - name: '{{inputs.parameters.pvc-name}}'
@@ -260,7 +261,7 @@ spec:
       outputs:
         parameters:
           - name: all_epitopes_binding_filter
-            value: "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes_binding_filter.tsv"
+            value: "{{inputs.parameters.output-dir}}/final/{{inputs.parameters.mhc-class}}/all_epitopes_binding_filter.tsv"
 ##  pvac coverage filter
     - name: pvac-coverage-filter
       inputs:
@@ -276,6 +277,7 @@ spec:
         - name: tdna-vaf #0.15
         - name: trna-vaf #0.15
         - name: all-epitopes #wrkflw input
+        - name: mhc-class
       podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
       volumes:
         - name: '{{inputs.parameters.pvc-name}}'
@@ -284,7 +286,7 @@ spec:
       container:
         image: griffithlab/pvactools:1.5.9
         command: ["pvacseq"] ## pvacseq coverage_filter --normal-cov 100 --tdna-cov 100 --trna-cov 10 --normal-vaf 0.01 --tdna-vaf 0.15 --trna-vaf 0.15 all_epitopes_binding_filter.tsv all_epitopes _coverage_filter.tsv
-        args: ["coverage_filter", "--normal-cov", "{{inputs.parameters.normal-cov}}", "--tdna-cov", "{{inputs.parameters.tdna-cov}}", "--trna-cov", "{{inputs.parameters.trna-cov}}", "--normal-vaf", "{{inputs.parameters.normal-vaf}}", "--tdna-vaf", "{{inputs.parameters.tdna-vaf}}", "--trna-vaf", "{{inputs.parameters.trna-vaf}}", "{{inputs.parameters.all-epitopes}}", "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes_coverage_filter.tsv"]
+        args: ["coverage_filter", "--normal-cov", "{{inputs.parameters.normal-cov}}", "--tdna-cov", "{{inputs.parameters.tdna-cov}}", "--trna-cov", "{{inputs.parameters.trna-cov}}", "--normal-vaf", "{{inputs.parameters.normal-vaf}}", "--tdna-vaf", "{{inputs.parameters.tdna-vaf}}", "--trna-vaf", "{{inputs.parameters.trna-vaf}}", "{{inputs.parameters.all-epitopes}}", "{{inputs.parameters.output-dir}}/final/{{inputs.parameters.mhc-class}}/all_epitopes_coverage_filter.tsv"]
         imagePullPolicy: Always
         volumeMounts:
         - name: '{{inputs.parameters.pvc-name}}'
@@ -294,7 +296,7 @@ spec:
       outputs:
         parameters:
           - name: all_epitopes_coverage_filter
-            value: "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes_coverage_filter.tsv"
+            value: "{{inputs.parameters.output-dir}}/final/{{inputs.parameters.mhc-class}}/all_epitopes_coverage_filter.tsv"
 ##  pvac transcript_spprt_lvl_filter
     - name: pvac-tsl-filter
       inputs:
@@ -305,6 +307,7 @@ spec:
         - name: "mem"
         - name: maximum-transcript-support-level #1
         - name: all-epitopes
+        - name: mhc-class
       podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
       volumes:
         - name: '{{inputs.parameters.pvc-name}}'
@@ -313,7 +316,7 @@ spec:
       container:
         image: griffithlab/pvactools:1.5.9
         command: ["pvacseq"] ## pvacseq transcript_support_level_filter --maximum-transcript-support-level 1 all_epitopes _coverage_filter.tsv all_epitopes_TSL_filter.tsv
-        args: ["transcript_support_level_filter", "--maximum-transcript-support-level", "{{inputs.parameters.maximum-transcript-support-level}}", "{{inputs.parameters.all-epitopes}}", "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes_TSL_filter.tsv"]
+        args: ["transcript_support_level_filter", "--maximum-transcript-support-level", "{{inputs.parameters.maximum-transcript-support-level}}", "{{inputs.parameters.all-epitopes}}", "{{inputs.parameters.output-dir}}/final/{{inputs.parameters.mhc-class}}/all_epitopes_TSL_filter.tsv"]
         imagePullPolicy: Always
         volumeMounts:
         - name: '{{inputs.parameters.pvc-name}}'
@@ -323,7 +326,7 @@ spec:
       outputs:
         parameters:
           - name: all_epitopes_tsl_filter
-            value: "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes_TSL_filter.tsv"
+            value: "{{inputs.parameters.output-dir}}/final/{{inputs.parameters.mhc-class}}/all_epitopes_TSL_filter.tsv"
 ##  pvac top score filter
     - name: pvac-top-filter
       inputs:
@@ -334,6 +337,7 @@ spec:
         - name: "mem"
         - name: top-score-metric #median
         - name: all-epitopes
+        - name: mhc-class
       podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
       volumes:
         - name: '{{inputs.parameters.pvc-name}}'
@@ -342,7 +346,7 @@ spec:
       container:
         image: griffithlab/pvactools:1.5.9
         command: ["pvacseq"] ## pvacseq top_score_filter -m median all_epitopes_TSL_filter.tsv all_epitopes_all_filters.tsv
-        args: ["top_score_filter", "-m", "{{inputs.parameters.top-score-metric}}", "{{inputs.parameters.all-epitopes}}", "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes_all_filters.tsv"]
+        args: ["top_score_filter", "-m", "{{inputs.parameters.top-score-metric}}", "{{inputs.parameters.all-epitopes}}", "{{inputs.parameters.output-dir}}/final/{{inputs.parameters.mhc-class}}/all_epitopes_all_filters.tsv"]
         imagePullPolicy: Always
         volumeMounts:
         - name: '{{inputs.parameters.pvc-name}}'
@@ -352,7 +356,7 @@ spec:
       outputs:
         parameters:
           - name: all_epitopes_top_filter
-            value: "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes_all_filters.tsv"
+            value: "{{inputs.parameters.output-dir}}/final/{{inputs.parameters.mhc-class}}/all_epitopes_all_filters.tsv"
 ##  pvac generated condensed ranked report
     - name: pvac-condensed-report
       inputs:
@@ -363,6 +367,7 @@ spec:
         - name: "mem"
         - name: top-score-metric #median
         - name: all-epitopes
+        - name: mhc-class
       podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
       volumes:
         - name: '{{inputs.parameters.pvc-name}}'
@@ -371,7 +376,7 @@ spec:
       container:
         image: griffithlab/pvactools:1.5.9
         command: ["pvacseq"] ## pvacseq generate_condensed_ranked_report -m median all_epitopes_all_filters.tsv all_epitopes.filtered.condensed.ranked.tsv
-        args: ["generate_condensed_ranked_report", "-m", "{{inputs.parameters.top-score-metric}}", "{{inputs.parameters.all-epitopes}}", "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes.filtered.condensed.ranked.tsv"]
+        args: ["generate_condensed_ranked_report", "-m", "{{inputs.parameters.top-score-metric}}", "{{inputs.parameters.all-epitopes}}", "{{inputs.parameters.output-dir}}/final/{{inputs.parameters.mhc-class}}/all_epitopes.filtered.condensed.ranked.tsv"]
         imagePullPolicy: Always
         volumeMounts:
         - name: '{{inputs.parameters.pvc-name}}'
@@ -381,4 +386,4 @@ spec:
       outputs:
         parameters:
           - name: all_epitopes_condensed_report
-            value: "{{inputs.parameters.output-dir}}/final/pvac-filters/all_epitopes.filtered.condensed.ranked.tsv"
+            value: "{{inputs.parameters.output-dir}}/final/{{inputs.parameters.mhc-class}}/all_epitopes.filtered.condensed.ranked.tsv"
