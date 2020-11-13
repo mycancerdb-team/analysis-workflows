@@ -360,3 +360,36 @@ spec:
       parameters:
         - name: hla_summary
           value: "{{inputs.parameters.output-dir}}/hla/{{inputs.parameters.sample-name}}/results/{{inputs.parameters.sample-name}}_HLA.sum"
+  - name: hla-phlat-etl
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: "cpu"
+      - name: "mem"
+      - name: output-dir
+      - name: phlat-file
+      - name: opti-file
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: docker.cancerdb.io/mgbio-workflow/phlat-etl:1.0.0
+      env:
+      - name: PHALT_FILE
+        value: "{{inputs.parameters.phlat-file}}"
+      - name: OPTI_FILE
+        value: "{{inputs.parameters.opti-file}}"
+      - name: OUTPUT_DIR
+        value: "{{inputs.parameters.output-dir}}"
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: hla_combined
+          value: "{{inputs.parameters.output-dir}}/hla/hla_calls/combined_calls.txt"
