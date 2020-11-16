@@ -203,7 +203,7 @@ spec:
       outputs:
         parameters:
           - name: class_1_all_epitopes
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.all_epitopes"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.all_epitopes.tsv"
           - name: class_1_filtered_ranked_epitopes
             value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.filtered.condensed.ranked.tsv"
           - name: class_1_filtered_epitopes
@@ -213,7 +213,7 @@ spec:
           - name: class_1_tumor_exome
             value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.tsv"
           - name: class_2_all_epitopes
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.id}}-tumor-exome.all_epitopes"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.id}}-tumor-exome.all_epitopes.tsv"
           - name: class_2_filtered_ranked_epitopes
             value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.id}}-tumor-exome.filtered.condensed.ranked.tsv"
           - name: class_2_filtered_epitopes
@@ -223,7 +223,7 @@ spec:
           - name: class_2_tumor_exome
             value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.id}}-tumor-exome.tsv"
           - name: combined_all_epitopes
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/combined/{{inputs.parameters.id}}-tumor-exome.all_epitopes"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/combined/{{inputs.parameters.id}}-tumor-exome.all_epitopes.tsv"
           - name: combined_filtered_ranked_epitopes
             value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/combined/{{inputs.parameters.id}}-tumor-exome.filtered.condensed.ranked.tsv"
           - name: combined_filtered_epitopes
