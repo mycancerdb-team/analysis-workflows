@@ -4,7 +4,7 @@ set -eou pipefail
 
 #PHLAT_FILE
 #OPTI_FILE #consenses_calls
-#OUTPUT_DIR
+#OUTPUTDIR
 
 echo -n 'Displaying PHLAT generated values ...'
 cat ${PHLAT_FILE}

@@ -377,11 +377,11 @@ spec:
     container:
       image: docker.cancerdb.io/mgbio-workflow/phlat-etl:1.0.0
       env:
-      - name: PHALT_FILE
+      - name: PHLAT_FILE
         value: "{{inputs.parameters.phlat-file}}"
       - name: OPTI_FILE
         value: "{{inputs.parameters.opti-file}}"
-      - name: OUTPUT_DIR
+      - name: OUTPUTDIR
         value: "{{inputs.parameters.output-dir}}"
       imagePullPolicy: Always
       volumeMounts:
