@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  generateName: mcdb-mgbio-mcdb005
+  generateName: mcdb-mgbio-mcdb007
 spec:
   volumes:
     - name: pvc-reference
@@ -66,6 +66,18 @@ spec:
     - name: epitope-lengths
     - name: pvac-prediction-algos
     - name: reference_dict
+    - name: binding-threshold
+    - name: downstream-sequence-length
+    - name: minimum-fold-change
+    - name: net-chop-method
+    - name: peptide-sequence-length
+    - name: top-score-metric
+    - name: pvac-normal-coverage
+    - name: pvac-tdna-coverage
+    - name: pvac-trna-coverage
+    - name: pvac-normal-vaf
+    - name: pvac-tdna-vaf
+    - name: pvac-trna-vaf
   onExit: exit-handler
   templates:
   - name: generate-pvc
@@ -398,11 +410,11 @@ spec:
             - name: pvc-name
               value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
             - name: "cpu"
-              value: "16"
+              value: "8"
             - name: "mem"
-              value: "64Gi"
+              value: "32Gi"
             - name: threads
-              value: 16
+              value: 8
             - name: data-type
               value: rna
             - name: trimmed_fastq1
@@ -4230,6 +4242,27 @@ spec:
               value: "{{workflow.parameters.genome-reference}}"
             - name: optitype_name
               value: optitype
+      - name: phlat-hla-dna
+        dependencies: [normal-index-bam]
+        templateRef:
+          name: immuno-germline-workflow
+          template: hla-phlat
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "24Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: bam
+              value: "{{tasks.normal-exome-apply-bqsr.outputs.parameters.bqsr_final_bam}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: sample-name
+              value: "{{workflow.parameters.normal-sample-name}}"
 ##END GERMLINE
 ## HLA EXTRACT ALLELES AND CONSENSUS
       - name: hla-extract-and-consensus
@@ -4249,6 +4282,25 @@ spec:
               value: "{{workflow.parameters.output-dir}}"
             - name: opti-tsv
               value: "{{tasks.germline-optitype-dna.outputs.parameters.optitype_tsv}}"
+      - name: hla-combine-mhc1-mhc2
+        dependencies: [hla-extract-and-consensus,phlat-hla-dna]
+        templateRef:
+          name: immuno-germline-workflow
+          template: hla-phlat-etl
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "12"
+            - name: "mem"
+              value: "32Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: phlat-file
+              value: "{{tasks.phlat-hla-dna.outputs.parameters.hla_summary}}"
+            - name: opti-file
+              value: "{{tasks.hla-extract-and-consensus.outputs.parameters.hla_calls_consensus}}"
 ## END HLA EXTRACT ALLELES AND CONSENSUS
 
 ##PhaseVCF
@@ -4718,7 +4770,7 @@ spec:
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: service
-              value: "phasevcf"
+              value: "pvacseq"
             - name: data-type
               value: 0
             - name: vcf
@@ -4739,6 +4791,8 @@ spec:
               value: "20Gi"
             - name: threads
               value: 8
+            - name: id
+              value: "{{workflow.parameters.id}}"
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: vcf
@@ -4756,5 +4810,386 @@ spec:
             - name: phased-proximal-variants-vcf
               value: "{{tasks.bgzip-phased-vcf.outputs.parameters.bgzipped_output}}"
 #vars to table
+      - name: pvac-variants-to-table
+        dependencies: [index-pvac-transcript-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars-pp
+          template: variants-to-table
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "8Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{{tasks.pvacseq-add-transcript-expression.outputs.parameters.annotated_expression_vcf}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: fields
+              value: "CHROM POS REF ALT set"
+            - name: genotype-fields
+              value: "GT AD AF DP"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: service-dir
+              value: "pvacseq"
 #add vep fields to table
-## End PvacSeq
+      - name: pvac-add-to-variant-table
+        dependencies: [pvac-variants-to-table, index-pvac-transcript-vcf]
+        templateRef:
+          name: immuno-somatic-exome-detect-vars-pp
+          template: vep-annotation-reporter
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "8Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: vcf
+              value: "{{tasks.pvacseq-add-transcript-expression.outputs.parameters.annotated_expression_vcf}}"
+            - name: vep-fields
+              value: "Consequence SYMBOL Feature_type Feature HGVSc HGVSp cDNA_position CDS_position Protein_position Amino_acids Codons HGNC_ID Existing_variation gnomADe_AF CLIN_SIG SOMATIC PHENO clinvar_CLINSIGN clinvar_PHENOTYPE clinvar_SCORE clinvar_RCVACC clinvar_TESTEDINGTR clinvar_PHENOTYPELIST clinvar_NUMSUBMIT clinvar_GUIDELINES"
+            - name: variants-tsv
+              value: "{{tasks.pvac-variants-to-table.outputs.parameters.variants_tsv}}"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: service-dir
+              value: "pvacseq"
+### Final Reporting Runs
+##PvAC Expanded Run MHC_1 MHC_2
+      - name: pvacseq-workflow-expanded
+        dependencies: [index-pvac-transcript-vcf,hla-combine-mhc1-mhc2,index-phased-vcf,pvacseq-workflow]
+        templateRef:
+          name: immuno-pvacseq-workflow
+          template: pvacseq-workflow-expanded
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "20Gi"
+            - name: threads
+              value: 8
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}/final"
+            - name: vcf
+              value: "{{tasks.pvacseq-add-transcript-expression.outputs.parameters.annotated_expression_vcf}}"
+            - name: sample-name
+              value: "{{workflow.parameters.tumor-sample-name}}"
+            - name: alleles
+              value: "{{tasks.hla-combine-mhc1-mhc2.outputs.parameters.hla_combined}}"
+            - name: prediction-algos
+              value: "NetMHC NetMHCcons PickPocket SMM SMMPMBEC MHCflurry MHCnuggetsI NetMHCpan NetMHCIIpan SMMalign NNalign MHCnuggetsII"
+            - name: epitope-lengths
+              value: "{{workflow.parameters.epitope-lengths}}"
+            - name: normal-sample-name
+              value: "{{workflow.parameters.normal-sample-name}}"
+            - name: phased-proximal-variants-vcf
+              value: "{{tasks.bgzip-phased-vcf.outputs.parameters.bgzipped_output}}"
+            - name: binding-threshold
+              value: "{{workflow.parameters.binding-threshold}}"
+            - name: downstream-sequence-length
+              value: "{{workflow.parameters.downstream-sequence-length}}"
+            - name: minimum-fold-change
+              value: "{{workflow.parameters.minimum-fold-change}}"
+            - name: net-chop-method
+              value: "{{workflow.parameters.net-chop-method}}"
+            - name: peptide-sequence-length
+              value: "{{workflow.parameters.peptide-sequence-length}}"
+            - name: top-score-metric
+              value: "{{workflow.parameters.top-score-metric}}"
+#pvac_reporter mhc_1
+      - name: pvacseq-reporter-mhc1
+        dependencies: [pvacseq-workflow-expanded]
+        templateRef:
+          name: immuno-pvacseq-workflow
+          template: pvacseq-reporter
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "20Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: epitope-file
+              value: "{{tasks.pvacseq-workflow-expanded.outputs.parameters.class_1_all_epitopes}}"
+            - name: service
+              value: "final/mhc_1"
+##BEGIN PVAC REPORTING MHC_1
+#pvac binding filter
+      - name: pvac-binding-filter-mhc1
+        dependencies: [pvacseq-workflow-expanded]
+        templateRef:
+          name: immuno-pvacseq-workflow
+          template: pvac-binding-filter
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "20Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: all-epitopes
+              value: "{{tasks.pvacseq-workflow-expanded.outputs.parameters.class_1_all_epitopes}}"
+            - name: top-score-metric
+              value: "median"
+            - name: mhc-class
+              value: "mhc_1"
+#pvac coverage filter
+      - name: pvac-coverage-filter-mhc1
+        dependencies: [pvacseq-workflow-expanded,pvac-binding-filter-mhc1]
+        templateRef:
+          name: immuno-pvacseq-workflow
+          template: pvac-coverage-filter
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "20Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: all-epitopes
+              value: "{{tasks.pvac-binding-filter-mhc1.outputs.parameters.all_epitopes_binding_filter}}"
+            - name: normal-cov
+              value: "{{workflow.parameters.pvac-normal-coverage}}"
+            - name: tdna-cov
+              value: "{{workflow.parameters.pvac-tdna-coverage}}"
+            - name: trna-cov
+              value: "{{workflow.parameters.pvac-trna-coverage}}"
+            - name: normal-vaf
+              value: "{{workflow.parameters.pvac-normal-vaf}}"
+            - name: tdna-vaf
+              value: "{{workflow.parameters.pvac-tdna-vaf}}"
+            - name: trna-vaf
+              value: "{{workflow.parameters.pvac-trna-vaf}}"
+            - name: mhc-class
+              value: "mhc_1"
+#pvac transcript_spprt_lvl_filter
+      - name: pvac-tsl-filter-mhc1
+        dependencies: [pvacseq-workflow-expanded,pvac-coverage-filter-mhc1]
+        templateRef:
+          name: immuno-pvacseq-workflow
+          template: pvac-tsl-filter
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "20Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: all-epitopes
+              value: "{{tasks.pvac-coverage-filter-mhc1.outputs.parameters.all_epitopes_coverage_filter}}"
+            - name: maximum-transcript-support-level
+              value: 1
+            - name: mhc-class
+              value: "mhc_1"
+#pvac top score filter
+      - name: pvac-all-filters-mhc1
+        dependencies: [pvacseq-workflow-expanded,pvac-tsl-filter-mhc1]
+        templateRef:
+          name: immuno-pvacseq-workflow
+          template: pvac-top-filter
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "20Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: all-epitopes
+              value: "{{tasks.pvac-tsl-filter-mhc1.outputs.parameters.all_epitopes_tsl_filter}}"
+            - name: top-score-metric
+              value: "median"
+            - name: mhc-class
+              value: "mhc_1"
+#pvac generated condensed ranked report
+      - name: pvac-condensed-report-mhc1
+        dependencies: [pvacseq-workflow-expanded,pvac-all-filters-mhc1]
+        templateRef:
+          name: immuno-pvacseq-workflow
+          template: pvac-condensed-report
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "20Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: all-epitopes
+              value: "{{tasks.pvac-all-filters-mhc1.outputs.parameters.all_epitopes_top_filter}}"
+            - name: top-score-metric
+              value: "median"
+            - name: mhc-class
+              value: "mhc_1"
+#pvac_reporter mhc_1
+      - name: pvacseq-reporter-mhc2
+        dependencies: [pvacseq-workflow-expanded]
+        templateRef:
+          name: immuno-pvacseq-workflow
+          template: pvacseq-reporter
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "20Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: epitope-file
+              value: "{{tasks.pvacseq-workflow-expanded.outputs.parameters.class_2_all_epitopes}}"
+            - name: service
+              value: "final/mhc_2"
+##BEGIN PVAC REPORTING MHC_2
+#pvac binding filter
+      - name: pvac-binding-filter-mhc2
+        dependencies: [pvacseq-workflow-expanded]
+        templateRef:
+          name: immuno-pvacseq-workflow
+          template: pvac-binding-filter
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "20Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: all-epitopes
+              value: "{{tasks.pvacseq-workflow-expanded.outputs.parameters.class_2_all_epitopes}}"
+            - name: top-score-metric
+              value: "median"
+            - name: mhc-class
+              value: "mhc_2"
+#pvac coverage filter
+      - name: pvac-coverage-filter-mhc2
+        dependencies: [pvacseq-workflow-expanded,pvac-binding-filter-mhc2]
+        templateRef:
+          name: immuno-pvacseq-workflow
+          template: pvac-coverage-filter
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "20Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: all-epitopes
+              value: "{{tasks.pvac-binding-filter-mhc2.outputs.parameters.all_epitopes_binding_filter}}"
+            - name: normal-cov
+              value: "{{workflow.parameters.pvac-normal-coverage}}"
+            - name: tdna-cov
+              value: "{{workflow.parameters.pvac-tdna-coverage}}"
+            - name: trna-cov
+              value: "{{workflow.parameters.pvac-trna-coverage}}"
+            - name: normal-vaf
+              value: "{{workflow.parameters.pvac-normal-vaf}}"
+            - name: tdna-vaf
+              value: "{{workflow.parameters.pvac-tdna-vaf}}"
+            - name: trna-vaf
+              value: "{{workflow.parameters.pvac-trna-vaf}}"
+            - name: mhc-class
+              value: "mhc_2"
+#pvac transcript_spprt_lvl_filter
+      - name: pvac-tsl-filter-mhc2
+        dependencies: [pvacseq-workflow-expanded,pvac-coverage-filter-mhc2]
+        templateRef:
+          name: immuno-pvacseq-workflow
+          template: pvac-tsl-filter
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "20Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: all-epitopes
+              value: "{{tasks.pvac-coverage-filter-mhc2.outputs.parameters.all_epitopes_coverage_filter}}"
+            - name: maximum-transcript-support-level
+              value: 1
+            - name: mhc-class
+              value: "mhc_2"
+#pvac top score filter
+      - name: pvac-all-filters-mhc2
+        dependencies: [pvacseq-workflow-expanded,pvac-tsl-filter-mhc2]
+        templateRef:
+          name: immuno-pvacseq-workflow
+          template: pvac-top-filter
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "20Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: all-epitopes
+              value: "{{tasks.pvac-tsl-filter-mhc2.outputs.parameters.all_epitopes_tsl_filter}}"
+            - name: top-score-metric
+              value: "median"
+            - name: mhc-class
+              value: "mhc_2"
+#pvac generated condensed ranked report
+      - name: pvac-condensed-report-mhc2
+        dependencies: [pvacseq-workflow-expanded,pvac-all-filters-mhc2]
+        templateRef:
+          name: immuno-pvacseq-workflow
+          template: pvac-condensed-report
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "20Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: all-epitopes
+              value: "{{tasks.pvac-all-filters-mhc2.outputs.parameters.all_epitopes_top_filter}}"
+            - name: top-score-metric
+              value: "median"
+            - name: mhc-class
+              value: "mhc_2"
+##PVAX Reporting Complete
