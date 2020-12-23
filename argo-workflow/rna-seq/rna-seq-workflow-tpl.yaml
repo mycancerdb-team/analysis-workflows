@@ -21,6 +21,7 @@ spec:
       - name: "mem"
       - name: data-type #normal,cancer,rna
       - name: bam-file
+      - name: provider
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -29,7 +30,7 @@ spec:
     container:
       image: mgibio/rnaseq:1.0.0
       command: ['/usr/bin/java']
-      args: ["-Xmx10g", "-jar", "/opt/picard/picard.jar", "SamToFastq", "VALIDATION_STRINGENCY=SILENT", "I=", "{{inputs.parameters.bam-file}}", "F=", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/read1.fastq", "F2=", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/read2.fastq"]
+      args: ["-Xmx10g", "-jar", "/opt/picard/picard.jar", "SamToFastq", "VALIDATION_STRINGENCY=SILENT", "I=", "{{inputs.parameters.bam-file}}", "F=", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.provider}}_read1.fastq", "F2=", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.provider}}_read2.fastq"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -37,9 +38,9 @@ spec:
     outputs:
       parameters:
         - name: fastq1
-          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/read1.fastq"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.provider}}_read1.fastq"
         - name: fastq2
-          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/read2.fastq"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/{{inputs.parameters.provider}}_read2.fastq"
   - name: trim-reads
     inputs:
       parameters:
@@ -56,6 +57,7 @@ spec:
       - name: trim-adapter-min-overlap
       - name: trim-max_uncalled
       - name: trim-min-readlength
+      - name: provider
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -64,7 +66,7 @@ spec:
     container:
       image: mgibio/bisulfite:v1.4
       command: ['/opt/flexbar/flexbar']
-      args: ["--adapter-min-overlap", "{{inputs.parameters.trim-adapter-min-overlap}}", "--adapter-trim-end", "{{inputs.parameters.trim-adapter-end}}", "--adapters", "{{inputs.parameters.trim-adapter-file}}", "--max-uncalled", "{{inputs.parameters.trim-max_uncalled}}", "--min-read-length", "{{inputs.parameters.trim-min-readlength}}", "--threads", "{{inputs.parameters.threads}}", "--reads", "{{inputs.parameters.rna-fastq-r1}}", "--reads2", "{{inputs.parameters.rna-fastq-r2}}", "--target", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_trimmed_read/trimmed_read", "--stdout-log"]
+      args: ["--adapter-min-overlap", "{{inputs.parameters.trim-adapter-min-overlap}}", "--adapter-trim-end", "{{inputs.parameters.trim-adapter-end}}", "--adapters", "{{inputs.parameters.trim-adapter-file}}", "--max-uncalled", "{{inputs.parameters.trim-max_uncalled}}", "--min-read-length", "{{inputs.parameters.trim-min-readlength}}", "--threads", "{{inputs.parameters.threads}}", "--reads", "{{inputs.parameters.rna-fastq-r1}}", "--reads2", "{{inputs.parameters.rna-fastq-r2}}", "--target", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_trimmed_read/{{inputs.parameters.provider}}_trimmed_read", "--stdout-log"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -74,9 +76,9 @@ spec:
     outputs:
       parameters:
       - name: trimmed_fastq1
-        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_trimmed_read/trimmed_read_1.fastq"
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_trimmed_read/{{inputs.parameters.provider}}_trimmed_read_1.fastq"
       - name: trimmed_fastq2
-        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_trimmed_read/trimmed_read_2.fastq"
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_trimmed_read/{{inputs.parameters.provider}}_trimmed_read_2.fastq"
 ###########
   - name: hisat2-align
     inputs:
@@ -93,6 +95,7 @@ spec:
       - name: read_group_fields
       - name: strand
       - name: reference_index
+      - name: provider
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -125,10 +128,12 @@ spec:
         value: "{{inputs.parameters.strand}}"
       - name: DATATYPE
         value: "{{inputs.parameters.data-type}}"
+      - name: PROVIDER
+        value: "{{inputs.parameters.provider}}"
     outputs:
       parameters:
       - name: aligned_bam
-        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_hisat2_align/aligned_bam/aligned.bam" #includes .bai
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_hisat2_align/aligned_bam/{{inputs.parameters.provider}}_aligned.bam" #includes .bai
 #############
   - name: kallisto-run
     inputs:
@@ -141,6 +146,8 @@ spec:
       - name: data-type
       - name: trimmed_fastq1
       - name: trimmed_fastq2
+      - name: trimmed_fastq1-2
+      - name: trimmed_fastq2-2
       - name: strand
       - name: kallisto_index
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
@@ -151,7 +158,7 @@ spec:
     container:
       image: mgibio/rnaseq:1.0.0
       command: ["/usr/bin/kallisto"]
-      args: ["quant", "-t", "{{inputs.parameters.threads}}", "-b", "100", "--fusion", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/kallisto", "--rf-stranded", "-i", "{{inputs.parameters.kallisto_index}}", "{{inputs.parameters.trimmed_fastq1}}", "{{inputs.parameters.trimmed_fastq2}}"]
+      args: ["quant", "-t", "{{inputs.parameters.threads}}", "-b", "100", "--fusion", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/kallisto", "--rf-stranded", "-i", "{{inputs.parameters.kallisto_index}}", "{{inputs.parameters.trimmed_fastq1}}", "{{inputs.parameters.trimmed_fastq2}}", "{{inputs.parameters.trimmed_fastq1-2}}", "{{inputs.parameters.trimmed_fastq2-2}}"]
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -203,12 +210,12 @@ spec:
       parameters:
       - name: pvc-name
       - name: output-dir
-      - name: threads
-      - name: data-type
       - name: "cpu"
       - name: "mem"
       - name: bam1
       - name: bam2
+      - name: id
+      - name: dir
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -217,7 +224,8 @@ spec:
     container:
       image: mgibio/biscuit:0.3.8.2
       command: ["/usr/bin/sambamba_merge"]
-      args: ["{{inputs.parameters.threads}}", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_merged_bam/merged.bam", "{{inputs.parameters.bam1}}", "{{inputs.parameters.bam2}}"]
+      workingDir: "{{inputs.parameters.output-dir}}/{{inputs.parameters.dir}}"
+      args: ["-t", "4", "{{inputs.parameters.output-dir}}/{{inputs.parameters.dir}}/{{inputs.parameters.id}}_merged.bam", "{{inputs.parameters.bam1}}", "{{inputs.parameters.bam2}}"]
       imagePullPolicy: Always
       volumeMounts:
       - name: "{{inputs.parameters.pvc-name}}"
@@ -227,9 +235,9 @@ spec:
     outputs:
       parameters:
       - name: merged_bam
-        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_merged_bam/merged.bam"
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.dir}}/{{inputs.parameters.id}}_merged.bam"
       - name: merged_bam_bai
-        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_merged_bam/merged.bai"
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.dir}}/{{inputs.parameters.id}}_merged.bai"
 ##############
   - name: index-bam
     inputs:

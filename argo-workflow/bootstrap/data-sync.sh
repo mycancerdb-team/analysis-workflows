@@ -7,11 +7,18 @@
 OUTPUTDIR="/data"
 
 date
-aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/cancer-exome/" "${OUTPUTDIR}/samples/tumor-exome/" --recursive
-aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/somatic-exome/" "${OUTPUTDIR}/samples/normal-exome/" --recursive
-aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/cancer-rna/" "${OUTPUTDIR}/samples/cancer-rna/" --recursive
+aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/cancer-exome/" "${OUTPUTDIR}/samples/tumor-exome/" --recursive --region us-east-2 --endpoint-url http://s3-accelerate.amazonaws.com
+aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/somatic-exome/" "${OUTPUTDIR}/samples/normal-exome/" --recursive --region us-east-2 --endpoint-url http://s3-accelerate.amazonaws.com
+aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/cancer-rna/" "${OUTPUTDIR}/samples/cancer-rna/" --recursive --region us-east-2 --endpoint-url http://s3-accelerate.amazonaws.com
+##batch-2
+aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/cegat/P78376_5_S000038/" "${OUTPUTDIR}/samples/tumor-exome-2/" --recursive --region us-east-2 --endpoint-url http://s3-accelerate.amazonaws.com
+aws s3 cp "$VAULT_ENDPOINT/$GENOMIC_PATH/cegat/P78376_4_S000038/" "${OUTPUTDIR}/samples/normal-exome-2/" --recursive --region us-east-2 --endpoint-url http://s3-accelerate.amazonaws.com
+##batch-3
+aws s3 cp "$VAULT_ENDPOINT/RFS-000/cancer-exome/" "${OUTPUTDIR}/samples/tumor-exome-3/" --recursive --region us-east-2 --endpoint-url http://s3-accelerate.amazonaws.com
+aws s3 cp "$VAULT_ENDPOINT/RFS-000/somatic-exome/" "${OUTPUTDIR}/samples/normal-exome-3/" --recursive --region us-east-2 --endpoint-url http://s3-accelerate.amazonaws.com
+aws s3 cp "$VAULT_ENDPOINT/RFS-000/cancer-rna/" "${OUTPUTDIR}/samples/cancer-rna-3/" --recursive --region us-east-2 --endpoint-url http://s3-accelerate.amazonaws.com
 #General Folders
-mkdir -p ${OUTPUTDIR}/output/{select_variants,hla,phasevcf,pvacseq/{temp,pvacseq_predictions,normalized,decom,readcount,final},mutect/{split-ints,sani,normalized,fpfilter,decom},final/{pvacseq/temp,mhc_1,mhc_2},strelka/{indels,snv,sani,normalized,fpfilter,decom,rename},varscan/{variants,indels,snv,sani,normalized,fpfilter,decom,rename},pindel/{split-beds,sani,normalized,fpfilter,decom},docm/{raw,decom},detect-variants/{decom,readcount,final},cnvkit,manta,logs,samples/{tumor-exome,normal-exome,cancer-rna}}
+mkdir -p ${OUTPUTDIR}/output/{select_variants,hla,phasevcf,pvacseq/{temp,pvacseq_predictions,normalized,decom,readcount,final},mutect/{split-ints,sani,normalized,fpfilter,decom},final/{pvacseq/temp,mhc_1,mhc_2},strelka/{indels,snv,sani,normalized,fpfilter,decom,rename},varscan/{variants,indels,snv,sani,normalized,fpfilter,decom,rename},pindel/{split-beds,sani,normalized,fpfilter,decom},docm/{raw,decom},detect-variants/{decom,readcount,final},cnvkit,manta,logs,samples/{tumor-exome,normal-exome,cancer-rna,normal-exome-2,tumor-exome-2,tumor-exome-3,normal-exome-3,cancer-rna-3}}
 #RNA Folders
 mkdir -p ${OUTPUTDIR}/output/{rna_final,rna_trimmed_read,rna_hisat2_align/aligned_bam,rna_merged_bam,rna_index_bam}
 #Normal Folders

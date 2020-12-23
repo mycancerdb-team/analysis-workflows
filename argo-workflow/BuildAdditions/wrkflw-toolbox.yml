@@ -21,7 +21,7 @@ spec:
       - name: mcdb-bot
       containers:
       - name: wrkflw-tools
-        image: docker.cancerdb.io/mcdb-bots/bootstrap:mgbio
+        image: docker.cancerdb.io/mcdb-bots/bootstrap:mgbio #docker.cancerdb.io/mgbio-workflow/hla-phlat:1.0.0 #docker.cancerdb.io/mcdb-bots/bootstrap:mgbio
         #resources:
         #  requests:
         #    memory: "60Gi"
@@ -30,24 +30,42 @@ spec:
         #    memory: "600Gi"
         #    cpu: "50"
         env:
+      #   - name: SMPLE
+      #     value: "mcdb006-normal-exome"
+      #   - name: BAM
+      #     value: "/data/output/mcdb006/normal_mcdb006.bam"
+      #   - name: REF_FILE
+      #     value: "/ref-hg38/reference_genome/all_sequences.fa"
         - name: EPITOPE_LENGTH
           value: "8,9,10,11"
         - name: THREADS
           value: "8"
         - name: NRML_SMPL_NME
-          value: "mcdb001-normal-exome"
+          value: "mcdb005-normal-exome"
         - name: PHASED_VCF
-          value: "/data/output/phasevcf/mcdb001_phased.vcf.gz"
+          value: "/data/output/mcdb005/phasevcf/mcdb005_phased.vcf.gz"
         - name: INPUT_VCF
-          value: "/data/output/pvacseq/annotated.expression.vcf.gz"
+          value: "/data/output/mcdb005/pvacseq/transcript_annotated.expression.vcf.gz"
         - name: TUMR_SMPL_NME
-          value: "mcdb001-tumor-exome"
+          value: "mcdb005-tumor-exome"
         - name: ALLELES
-          value: "/data/output/hla/hla_calls/consensus_calls.txt"
+          value: "/data/output/mcdb005/hla/hla_calls/combined_calls.txt"
         - name: PREDICTION_ALGO
-          value: "NetMHC"
+          value: "NetMHC NetMHCcons PickPocket SMM SMMPMBEC MHCflurry MHCnuggetsI NetMHCpan NetMHCIIpan SMMalign NNalign MHCnuggetsII"
         - name: OUTPUTDIR
-          value: "/data/output"
+          value: "/data/output/mcdb005/pvac-final"
+        - name: BINDING_THRSHLD
+          value: "500"
+        - name: DWNSTREAM_SQ_LNGTH
+          value: "100"
+        - name: MIN_FOLD_CHNGE
+          value: "1.0"
+        - name: NET_CHOP_MTHD
+          value: "cterm"
+        - name: PEP_SEQ_LNGTH
+          value: "21"
+        - name: TOP_SCORE_MTRC
+          value: "lowest"
         command: ["/bin/bash", "-c", "--"]
         args: ["while true; do sleep 30; done;"]
         imagePullPolicy: Always
@@ -56,15 +74,15 @@ spec:
         volumeMounts:
           - mountPath: /ref-hg38
             name: workflow-ref-hg38-dev
-          - mountPath: /data
-            name: workflow-data-dev
+          # - mountPath: /data
+          #   name: workflow-data-dev
       hostNetwork: true
       volumes:
       - name: workflow-ref-hg38-dev
         persistentVolumeClaim:
           claimName: workflow-ref-hg38-dev
           readOnly: false
-      - name: workflow-data-dev
-        persistentVolumeClaim:
-          claimName: immuno-data-pvc-mcdb000
-          readOnly: false
+      # - name: workflow-data-dev
+        # persistentVolumeClaim:
+          # claimName: immuno-data-pvc-mcdb007
+          # readOnly: false

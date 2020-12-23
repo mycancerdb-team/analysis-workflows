@@ -1,16 +1,16 @@
 id: mcdb008
 ns: argo
-pvc: tempus-data-pvc
+pvc: immuno-data-pvc
 size: 2000Gi
 output-dir: /data/output
-s3-gen-dir: RFS-000
+s3-gen-dir: RFS-001
 vault-name: s3://mcdb-vault008
-rna-fastq-r1: /data/samples/cancer-rna/TL-20-D3C261_T_RSQ1_1.fastq.gz
-rna-fastq-r2: /data/samples/cancer-rna/TL-20-D3C261_T_RSQ1_3.fastq.gz
-normal-fastq-r1: /data/samples/normal-exome/TL-20-D3C261_N_DSQ1_1.fastq.gz
-normal-fastq-r2: /data/samples/normal-exome/TL-20-D3C261_N_DSQ1_2.fastq.gz
-cancer-fastq-r1: /data/samples/tumor-exome/TL-20-D3C261_T_DSQ1_1.fastq.gz
-cancer-fastq-r2: /data/samples/tumor-exome/TL-20-D3C261_T_DSQ1_2.fastq.gz
+rna-fastq-r1: /data/samples/cancer-rna/P78376_3.1.fastq.gz
+rna-fastq-r2: /data/samples/cancer-rna/P78376_3.2.fastq.gz
+normal-fastq-r1: /data/samples/normal-exome/P78376_1.1.fastq.gz
+normal-fastq-r2: /data/samples/normal-exome/P78376_1.2.fastq.gz
+cancer-fastq-r1: /data/samples/tumor-exome/P78376_2.1.fastq.gz
+cancer-fastq-r2: /data/samples/tumor-exome/P78376_2.2.fastq.gz
 normal-readGroup: "@RG\tID:A\tSM:mcdb008-normal-exome\tPL:illumina"
 cancer-readGroup: "@RG\tID:A\tSM:mcdb008-tumor-exome\tPL:illumina"
 rna-readGroup: "SM:mcdb008-cancer-rna PL:illumina"
@@ -20,8 +20,8 @@ known-indels: /ref-hg38/somatic_inputs/indels.hq.vcf.gz
 dbsnp-vcf: /ref-hg38/somatic_inputs/snvs.hq.vcf.gz
 strand: "first"
 input-sort-order: "coordinate"
-bait-intervals: /ref-hg38/somatic_inputs/intervals/Exome-IDT_V1.interval_list
-target-intervals: /ref-hg38/somatic_inputs/intervals/Exome-IDT_V1.interval_list
+bait-intervals: /ref-hg38/somatic_inputs/intervals/hglft_genome_44e2b_193f00.interval_list
+target-intervals: /ref-hg38/somatic_inputs/intervals/hglft_genome_44e2b_193f00.interval_list
 per-base-intervals: /ref-hg38/somatic_inputs/intervals/per_base.interval_list
 per-target-intervals: /ref-hg38/somatic_inputs/intervals/per_target.interval_list
 summary-intervals: /ref-hg38/Agilent_SureSelect_XT_Human_All_Exon_V5/hg38_padded.interval_list
@@ -45,7 +45,7 @@ normal-sample-name: mcdb008-normal-exome
 docm-vcf: /ref-hg38/somatic_inputs/docm.hq.vcf.gz
 sequence-platform-unit: HJC52BBXX.1
 sequence-platform: illumina
-sequence-house: Tempus
+sequence-house: CeGat
 vep-cache-dir: /ref-hg38/VEP/VEP_cache
 vep-ensembl-version: 95
 vep-ensembl-assembly: GRCh38

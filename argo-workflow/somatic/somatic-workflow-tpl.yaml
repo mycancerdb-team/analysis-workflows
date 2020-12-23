@@ -25,6 +25,7 @@ spec:
       - name: bam-file
       - name: readGroup
       - name: reference
+      - name: provider
     podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
     volumes:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -37,6 +38,8 @@ spec:
         value: "{{inputs.parameters.output-dir}}"
       - name: DATATYPE
         value: "{{inputs.parameters.data-type}}"
+      - name: PROVIDER
+        value: "{{inputs.parameters.provider}}"
       command: ['/root/run_step.sh']
       args: ["-b", "{{inputs.parameters.bam-file}}", "-g", "{{inputs.parameters.readGroup}}", "-r", "{{inputs.parameters.reference}}", "-n", "{{inputs.parameters.threads}}"]
       imagePullPolicy: Always
@@ -48,7 +51,7 @@ spec:
     outputs:
       parameters:
         - name: aligned_bam
-          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_bwa/{{inputs.parameters.data-type}}-aligned.bam"
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_bwa/{{inputs.parameters.provider}}_{{inputs.parameters.data-type}}-aligned.bam"
   - name: name-sort
     inputs:
       parameters:
@@ -667,6 +670,38 @@ spec:
       parameters:
         - name: expanded_interval_list
           value: "/ref-hg38/somatic_inputs/intervals/{{inputs.parameters.id}}.expanded.interval_list"
+  - name: merge-bams
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: threads
+      - name: id
+      - name: dir
+      - name: bam1
+      - name: bam2
+      - name: bam3
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/samtools-cwl:1.0.0
+      command: ['/opt/samtools/bin/samtools']
+      args: ["merge", "--threads", "4", "{{inputs.parameters.output-dir}}/{{inputs.parameters.dir}}/{{inputs.parameters.id}}_merged.bam", "{{inputs.parameters.bam1}}", "{{inputs.parameters.bam2}}", "{{inputs.parameters.bam3}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+        - name: merged_bam
+          value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.dir}}/{{inputs.parameters.id}}_merged.bam"
   #- name: ###
   #  inputs:
   #    parameters:

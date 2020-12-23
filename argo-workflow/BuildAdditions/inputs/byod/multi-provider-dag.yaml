@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  generateName: mcdb008-tempus
+  generateName: mcdb008-combined
 spec:
   volumes:
     - name: pvc-reference
@@ -22,12 +22,20 @@ spec:
     - name: vault-name
     - name: rna-fastq-r1
     - name: rna-fastq-r2
+    - name: rna-readGroup
+    - name: rna-readGroup-3
     - name: normal-fastq-r1
     - name: normal-fastq-r2
     - name: cancer-fastq-r1
     - name: cancer-fastq-r2
+    - name: cancer-fastq-r1-2
+    - name: cancer-fastq-r2-2
+    - name: cancer-fastq-r1-3
+    - name: cancer-fastq-r2-3
     - name: normal-readGroup
     - name: cancer-readGroup
+    - name: cancer-readGroup-2
+    - name: cancer-readGroup-3
     - name: genome-reference
     - name: input-sort-order
     - name: strand
@@ -60,6 +68,7 @@ spec:
     - name: sequence-platform-unit
     - name: sequence-platform
     - name: sequence-house
+    - name: sequence-house-2
     - name: gatk-haplotypecaller-intervals
     - name: emit-ref-confidence
     - name: max-population-allele-freq
@@ -122,7 +131,7 @@ spec:
         persistentVolumeClaim:
           claimName: '{{inputs.parameters.pvc-name}}'
     container:
-      image: docker.cancerdb.io/mcdb-bots/bootstrap:mgbio
+      image: docker.cancerdb.io/mcdb-bots/bootstrap:mgbio-mcdb008
       imagePullPolicy: Always
       volumeMounts:
       - name: '{{inputs.parameters.pvc-name}}'
@@ -238,6 +247,7 @@ spec:
               value: "{{workflow.parameters.id}}"
             - name: s3-gen-dir
               value: "{{workflow.parameters.s3-gen-dir}}"
+### CeGaT WES Block
       - name: fastq-bam-cancer
         template: fastq-prep-bam
         dependencies: [bootstrap-data]
@@ -319,6 +329,89 @@ spec:
               value: "{{workflow.parameters.sequence-platform}}"
             - name: sequence-house
               value: "{{workflow.parameters.sequence-house}}"
+## CeGaT Panel
+      - name: fastq-bam-cancer-2
+        template: fastq-prep-bam
+        dependencies: [bootstrap-data]
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "10"
+            - name: "mem"
+              value: "10Gi"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: fastq1
+              value: "{{workflow.parameters.cancer-fastq-r1-2}}"
+            - name: fastq2
+              value: "{{workflow.parameters.cancer-fastq-r2-2}}"
+            - name: data-type
+              value: tumor-exome-2
+            - name: platform-unit
+              value: "{{workflow.parameters.sequence-platform-unit}}"
+            - name: platform
+              value: "{{workflow.parameters.sequence-platform}}"
+            - name: sequence-house
+              value: "{{workflow.parameters.sequence-house}}-tp"
+## Tempus WES Block
+      - name: fastq-bam-cancer-3
+        template: fastq-prep-bam
+        dependencies: [bootstrap-data]
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "10"
+            - name: "mem"
+              value: "10Gi"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: fastq1
+              value: "{{workflow.parameters.cancer-fastq-r1-3}}"
+            - name: fastq2
+              value: "{{workflow.parameters.cancer-fastq-r2-3}}"
+            - name: data-type
+              value: tumor-exome-3
+            - name: platform-unit
+              value: "{{workflow.parameters.sequence-platform-unit}}"
+            - name: platform
+              value: "{{workflow.parameters.sequence-platform}}"
+            - name: sequence-house
+              value: "{{workflow.parameters.sequence-house-2}}"
+      - name: fastq-bam-rna-3
+        template: fastq-prep-bam
+        dependencies: [bootstrap-data]
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "10"
+            - name: "mem"
+              value: "10Gi"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: fastq1
+              value: "{{workflow.parameters.rna-fastq-r1-3}}"
+            - name: fastq2
+              value: "{{workflow.parameters.rna-fastq-r2-3}}"
+            - name: data-type
+              value: cancer-rna-3
+            - name: platform-unit
+              value: "{{workflow.parameters.sequence-platform-unit}}"
+            - name: platform
+              value: "{{workflow.parameters.sequence-platform}}"
+            - name: sequence-house
+              value: "{{workflow.parameters.sequence-house-2}}"
 ##Begin RNA-Seq Steps
       - name: rnaq-seq-bam-to-fastq
         dependencies: [fastq-bam-rna]
@@ -341,6 +434,31 @@ spec:
               value: rna
             - name: bam-file
               value: "{{tasks.fastq-bam-rna.outputs.parameters.fastq_bam}}"
+            - name: provider
+              value: "{{workflow.parameters.sequence-house}}"
+      - name: rnaq-seq-bam-to-fastq-2
+        dependencies: [fastq-bam-rna-3]
+        templateRef:
+          name: immuno-rnaseq-workflow
+          template: bam-to-fastq
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "20Gi"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: rna
+            - name: bam-file
+              value: "{{tasks.fastq-bam-rna-3.outputs.parameters.fastq_bam}}"
+            - name: provider
+              value: "{{workflow.parameters.sequence-house-2}}"
       - name: rna-seq-trim-reads
         dependencies: [rnaq-seq-bam-to-fastq]
         templateRef:
@@ -374,6 +492,43 @@ spec:
               value: "{{tasks.rnaq-seq-bam-to-fastq.outputs.parameters.fastq2}}"
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
+            - name: provider
+              value: "{{workflow.parameters.sequence-house}}"
+      - name: rna-seq-trim-reads-2
+        dependencies: [rnaq-seq-bam-to-fastq-2]
+        templateRef:
+          name: immuno-rnaseq-workflow
+          template: trim-reads
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "8"
+            - name: "mem"
+              value: "20Gi"
+            - name: threads
+              value: 8
+            - name: data-type
+              value: rna
+            - name: trim-adapter-file
+              value: "{{workflow.parameters.trim-adapter-file}}"
+            - name: trim-adapter-end
+              value: 'RIGHT'
+            - name: trim-adapter-min-overlap
+              value: 7
+            - name: trim-max_uncalled
+              value: 300
+            - name: trim-min-readlength
+              value: 25
+            - name: rna-fastq-r1
+              value: "{{tasks.rnaq-seq-bam-to-fastq-2.outputs.parameters.fastq1}}"
+            - name: rna-fastq-r2
+              value: "{{tasks.rnaq-seq-bam-to-fastq-2.outputs.parameters.fastq2}}"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: provider
+              value: "{{workflow.parameters.sequence-house-2}}"
       - name: rna-seq-hisat2-align
         dependencies: [rna-seq-trim-reads]
         templateRef:
@@ -398,15 +553,74 @@ spec:
             - name: reference_index
               value: "{{workflow.parameters.hisat-index}}"
             - name: read_group_id
-              value: "A" #unique-id
+              value: "C" #unique-id
             - name: read_group_fields
               value: "{{workflow.parameters.rna-readGroup}}" ## coma seperated list
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: strand
               value: "{{workflow.parameters.strand}}"
+            - name: provider
+              value: "{{workflow.parameters.sequence-house}}"
+      - name: rna-seq-hisat2-align-2
+        dependencies: [rna-seq-trim-reads-2]
+        templateRef:
+          name: immuno-rnaseq-workflow
+          template: hisat2-align
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "28"
+            - name: "mem"
+              value: "90Gi"
+            - name: threads
+              value: 24
+            - name: data-type
+              value: rna
+            - name: trimmed_fastq1
+              value: "{{tasks.rna-seq-trim-reads-2.outputs.parameters.trimmed_fastq1}}"
+            - name: trimmed_fastq2
+              value: "{{tasks.rna-seq-trim-reads-2.outputs.parameters.trimmed_fastq2}}"
+            - name: reference_index
+              value: "{{workflow.parameters.hisat-index}}"
+            - name: read_group_id
+              value: "T" #unique-id
+            - name: read_group_fields
+              value: "{{workflow.parameters.rna-readGroup-3}}" ## coma seperated list
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: strand
+              value: "{{workflow.parameters.strand}}"
+            - name: provider
+              value: "{{workflow.parameters.sequence-house-2}}"
+      - name: merge-hisat2-bams
+        dependencies: [rna-seq-hisat2-align,rna-seq-hisat2-align-2]
+        templateRef:
+          name: immuno-rnaseq-workflow
+          template: merge-bams
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "8Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: bam1
+              value: "{{tasks.rna-seq-hisat2-align.outputs.parameters.aligned_bam}}"
+            - name: bam2
+              value: "{{tasks.rna-seq-hisat2-align-2.outputs.parameters.aligned_bam}}"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: dir
+              value: rna_final
+## Use 4 fastq files for Kallisto
       - name: rna-seq-kallisto
-        dependencies: [rna-seq-hisat2-align]
+        dependencies: [rna-seq-trim-reads, rna-seq-trim-reads-2]
         templateRef:
           name: immuno-rnaseq-workflow
           template: kallisto-run
@@ -426,6 +640,10 @@ spec:
               value: "{{tasks.rna-seq-trim-reads.outputs.parameters.trimmed_fastq1}}"
             - name: trimmed_fastq2
               value: "{{tasks.rna-seq-trim-reads.outputs.parameters.trimmed_fastq2}}"
+            - name: trimmed_fastq1-2
+              value: "{{tasks.rna-seq-trim-reads-2.outputs.parameters.trimmed_fastq1}}"
+            - name: trimmed_fastq2-2
+              value: "{{tasks.rna-seq-trim-reads-2.outputs.parameters.trimmed_fastq2}}"
             - name: kallisto_index
               value: "{{workflow.parameters.kallisto-index}}"
             - name: strand
@@ -453,8 +671,9 @@ spec:
               value: "{{workflow.parameters.gene-transcript-lookup-table}}"
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
+## Indexed MERGED BAM
       - name: rna-index-bam
-        dependencies: [rna-seq-hisat2-align]
+        dependencies: [merge-hisat2-bams]
         templateRef:
           name: immuno-rnaseq-workflow
           template: index-bam
@@ -475,9 +694,9 @@ spec:
             - name: dir-name
               value: index_bam
             - name: bam-file
-              value: "{{tasks.rna-seq-hisat2-align.outputs.parameters.aligned_bam}}"
+              value: "{{tasks.merge-hisat2-bams.outputs.parameters.merged_bam}}"
       - name: rna-mark-duplicates
-        dependencies: [rna-seq-hisat2-align]
+        dependencies: [merge-hisat2-bams, rna-index-bam]
         templateRef:
           name: immuno-rnaseq-workflow
           template: mark-dup
@@ -496,7 +715,7 @@ spec:
             - name: output-dir
               value: "{{workflow.parameters.output-dir}}"
             - name: bam-file
-              value: "{{tasks.rna-seq-hisat2-align.outputs.parameters.aligned_bam}}"
+              value: "{{tasks.merge-hisat2-bams.outputs.parameters.merged_bam}}"
             - name: input-sort-order
               value: "{{workflow.parameters.input-sort-order}}"
       - name: run-stringtie
@@ -587,6 +806,8 @@ spec:
               value: "{{workflow.parameters.normal-readGroup}}"
             - name: reference
               value: "{{workflow.parameters.genome-reference}}"
+            - name: provider
+              value: "{{workflow.parameters.sequence-house}}"
       - name: bwa-align-cancer-exome
         dependencies: [fastq-bam-cancer]
         templateRef:
@@ -608,14 +829,91 @@ spec:
               value: "cancer"
             - name: bam-file
               value: "{{tasks.fastq-bam-cancer.outputs.parameters.fastq_bam}}"
-#            - name: exome-fastq-r1
-#              value: "{{tasks.fastq-bam-cancer.outputs.parameters.fastq1}}"
-#            - name: exome-fastq-r2
-#              value: "{{tasks.fastq-bam-cancer.outputs.parameters.fastq2}}"
             - name: readGroup
               value: "{{workflow.parameters.cancer-readGroup}}"
             - name: reference
               value: "{{workflow.parameters.genome-reference}}"
+            - name: provider
+              value: "{{workflow.parameters.sequence-house}}"
+      - name: bwa-align-cancer-exome-2
+        dependencies: [fastq-bam-cancer-2]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: bwa-align
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "25"
+            - name: "mem"
+              value: "30Gi"
+            - name: threads
+              value: 24
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: "cancer"
+            - name: bam-file
+              value: "{{tasks.fastq-bam-cancer-2.outputs.parameters.fastq_bam}}"
+            - name: readGroup
+              value: "{{workflow.parameters.cancer-readGroup}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: provider
+              value: "{{workflow.parameters.sequence-house}}-tp"
+      - name: bwa-align-cancer-exome-3
+        dependencies: [fastq-bam-cancer-3]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: bwa-align
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "25"
+            - name: "mem"
+              value: "30Gi"
+            - name: threads
+              value: 24
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: data-type
+              value: "cancer"
+            - name: bam-file
+              value: "{{tasks.fastq-bam-cancer-3.outputs.parameters.fastq_bam}}"
+            - name: readGroup
+              value: "{{workflow.parameters.cancer-readGroup}}"
+            - name: reference
+              value: "{{workflow.parameters.genome-reference}}"
+            - name: provider
+              value: "{{workflow.parameters.sequence-house-2}}"
+      - name: merge-cancer-aligned-bams
+        dependencies: [bwa-align-cancer-exome, bwa-align-cancer-exome-2, bwa-align-cancer-exome-3]
+        templateRef:
+          name: immuno-somatic-exome-workflow
+          template: merge-bams
+        arguments:
+          parameters:
+            - name: pvc-name
+              value: "{{tasks.generate-pvc-data.outputs.parameters.pvc-name}}"
+            - name: "cpu"
+              value: "4"
+            - name: "mem"
+              value: "8Gi"
+            - name: output-dir
+              value: "{{workflow.parameters.output-dir}}"
+            - name: bam1
+              value: "{{tasks.bwa-align-cancer-exome.outputs.parameters.aligned_bam}}"
+            - name: bam2
+              value: "{{tasks.bwa-align-cancer-exome-2.outputs.parameters.aligned_bam}}"
+            - name: bam3
+              value: "{{tasks.bwa-align-cancer-exome-3.outputs.parameters.aligned_bam}}"
+            - name: id
+              value: "{{workflow.parameters.id}}"
+            - name: dir
+              value: cancer_final
 #name sort
       - name: name-sort-normal-exome
         dependencies: [bwa-align-normal-exome]
@@ -639,7 +937,7 @@ spec:
             - name: bam-file
               value: "{{tasks.bwa-align-normal-exome.outputs.parameters.aligned_bam}}"
       - name: name-sort-cancer-exome
-        dependencies: [bwa-align-cancer-exome]
+        dependencies: [merge-cancer-aligned-bams]
         templateRef:
           name: immuno-somatic-exome-workflow
           template: name-sort
@@ -658,7 +956,7 @@ spec:
             - name: data-type
               value: cancer
             - name: bam-file
-              value: "{{tasks.bwa-align-cancer-exome.outputs.parameters.aligned_bam}}"
+              value: "{{tasks.merge-cancer-aligned-bams.outputs.parameters.merged_bam}}"
 ##mark_dups
       - name: normal-exome-mark-dups
         dependencies: [name-sort-normal-exome]

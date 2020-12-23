@@ -1,6 +1,6 @@
 id: mcdb008
 ns: argo
-pvc: tempus-data-pvc
+pvc: immuno-data-pvc
 size: 2000Gi
 output-dir: /data/output
 s3-gen-dir: RFS-000
