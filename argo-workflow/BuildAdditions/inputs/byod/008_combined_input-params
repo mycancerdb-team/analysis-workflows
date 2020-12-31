@@ -79,6 +79,6 @@ pvac-normal-coverage: 100
 pvac-tdna-coverage: 100
 pvac-trna-coverage: 10
 pvac-normal-vaf: 0.01
-pvac-tdna-vaf: 0.15
-pvac-trna-vaf: 0.15
+pvac-tdna-vaf: 0.05
+pvac-trna-vaf: 0.05
 sqs-url: https://sqs.us-east-2.amazonaws.com/095537403280/mcdb008-queue
