@@ -1,28 +1,19 @@
-id: mcdb008
+id: mcdb009
 ns: argo
 pvc: immuno-data-pvc
 size: 2000Gi
 output-dir: /data/output
-s3-gen-dir: RFS-001
-vault-name: s3://mcdb-vault008
-rna-fastq-r1: /data/samples/cancer-rna/P78376_3.1.fastq.gz
-rna-fastq-r2: /data/samples/cancer-rna/P78376_3.2.fastq.gz
-normal-fastq-r1: /data/samples/normal-exome/P78376_1.1.fastq.gz
-normal-fastq-r2: /data/samples/normal-exome/P78376_1.2.fastq.gz
-cancer-fastq-r1: /data/samples/tumor-exome/P78376_2.1.fastq.gz
-cancer-fastq-r2: /data/samples/tumor-exome/P78376_2.2.fastq.gz
-cancer-fastq-r1-2: /data/samples/tumor-exome-2/P78376_5.1.fastq.gz
-cancer-fastq-r2-2: /data/samples/tumor-exome-2/P78376_5.2.fastq.gz
-cancer-fastq-r1-3: /data/samples/tumor-exome-3/TL-20-D3C261_T_DSQ1_1.fastq.gz
-cancer-fastq-r2-3: /data/samples/tumor-exome-3/TL-20-D3C261_T_DSQ1_2.fastq.gz
-rna-fastq-r1-3: /data/samples/cancer-rna-3/TL-20-D3C261_T_RSQ1_1.fastq.gz
-rna-fastq-r2-3: /data/samples/cancer-rna-3/TL-20-D3C261_T_RSQ1_3.fastq.gz
-normal-readGroup: "@RG\tID:1\tSM:normal\tLB:cegat_normal-exome\tPL:ILLUMINA\tPU:$flowcell_id1"
-cancer-readGroup: "@RG\tID:1\tSM:tumor\tLB:cegat_tumor-exome\tPL:ILLUMINA\tPU:$flowcell_id1"
-cancer-readGroup-2: "@RG\tID:2\tSM:tumor\tLB:cegat_tumor-exome\tPL:ILLUMINA\tPU:$flowcell_id2"
-cancer-readGroup-3: "@RG\tID:3\tSM:tumor\tLB:tempus_tumor-exome\tPL:ILLUMINA\tPU:$flowcell_id3"
-rna-readGroup: "SM:cegat-cancer-rna PL:illumina"
-rna-readGroup-3: "SM:tempus-cancer-rna PL:illumina"
+s3-gen-dir: RFS-000
+vault-name: s3://mcdb-vault009
+rna-fastq-r1: /data/samples/cancer-rna/P74321_5.1.fastq.gz
+rna-fastq-r2: /data/samples/cancer-rna/P74321_5.2.fastq.gz
+normal-fastq-r1: /data/samples/normal-exome/P74321_1.1.fastq.gz
+normal-fastq-r2: /data/samples/normal-exome/P74321_1.2.fastq.gz
+cancer-fastq-r1: /data/samples/tumor-exome/P74321_4.1.fastq.gz
+cancer-fastq-r2: /data/samples/tumor-exome/P74321_4.2.fastq.gz
+normal-readGroup: "@RG\tID:A\tSM:mcdb009-normal-exome\tPL:illumina"
+cancer-readGroup: "@RG\tID:A\tSM:mcdb009-tumor-exome\tPL:illumina"
+rna-readGroup: "SM:mcdb009-cancer-rna PL:illumina"
 genome-reference: /ref-hg38/reference_genome/all_sequences.fa
 bqsr-intervals: "-L chr1 -L chr2 -L chr3 -L chr4 -L chr5 -L chr6 -L chr7 -L chr8 -L chr9 -L chr10 -L chr11 -L chr12 -L chr13 -L chr14 -L chr15 -L chr16 -L chr17 -L chr18 -L chr19 -L chr20 -L chr21 -L chr22"
 known-indels: /ref-hg38/somatic_inputs/indels.hq.vcf.gz
@@ -49,13 +40,12 @@ somalier-vcf: /ref-hg38/somatic_inputs/GRC-human-build38_gnomad_exome_common_snp
 exome-interval-list: /ref-hg38/somatic_inputs/intervals/exome.interval_list
 filter-docm-variants: true
 scatter-count: 50
-tumor-sample-name: tumor
-normal-sample-name: normal
+tumor-sample-name: mcdb009-tumor-exome
+normal-sample-name: mcdb009-normal-exome
 docm-vcf: /ref-hg38/somatic_inputs/docm.hq.vcf.gz
 sequence-platform-unit: HJC52BBXX.1
 sequence-platform: illumina
 sequence-house: CeGat
-sequence-house-2: Tempus
 vep-cache-dir: /ref-hg38/VEP/VEP_cache
 vep-ensembl-version: 95
 vep-ensembl-assembly: GRCh38
@@ -81,4 +71,4 @@ pvac-trna-coverage: 10
 pvac-normal-vaf: 0.01
 pvac-tdna-vaf: 0.15
 pvac-trna-vaf: 0.15
-sqs-url: https://sqs.us-east-2.amazonaws.com/095537403280/mcdb008-queue
+sqs-url: https://sqs.us-east-2.amazonaws.com/095537403280/mcdb009-queue

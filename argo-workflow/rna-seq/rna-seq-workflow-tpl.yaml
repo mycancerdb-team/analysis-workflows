@@ -225,7 +225,7 @@ spec:
       image: mgibio/biscuit:0.3.8.2
       command: ["/usr/bin/sambamba_merge"]
       workingDir: "{{inputs.parameters.output-dir}}/{{inputs.parameters.dir}}"
-      args: ["-t", "4", "{{inputs.parameters.output-dir}}/{{inputs.parameters.dir}}/{{inputs.parameters.id}}_merged.bam", "{{inputs.parameters.bam1}}", "{{inputs.parameters.bam2}}"]
+      args: ["4", "{{inputs.parameters.output-dir}}/{{inputs.parameters.dir}}/{{inputs.parameters.id}}_merged.bam", "{{inputs.parameters.bam1}}", "{{inputs.parameters.bam2}}"]
       imagePullPolicy: Always
       volumeMounts:
       - name: "{{inputs.parameters.pvc-name}}"

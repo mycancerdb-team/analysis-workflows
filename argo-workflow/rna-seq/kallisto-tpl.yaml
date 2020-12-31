@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: immuno-kallisto-workflow
+spec:
+  volumes:
+    - name: pvc-reference
+      persistentVolumeClaim:
+        claimName: workflow-ref-hg38-dev #### This is subject to change.
+  imagePullSecrets:
+    - name: mgbio-cred
+    - name: mcdb-bot
+  templates:
+  - name: kallisto-run
+    inputs:
+      parameters:
+      - name: pvc-name
+      - name: output-dir
+      - name: "cpu"
+      - name: "mem"
+      - name: threads
+      - name: data-type
+      - name: trimmed_fastq1
+      - name: trimmed_fastq2
+      - name: strand
+      - name: kallisto_index
+    podSpecPatch: '{"containers":[{"name":"main", "resources":{"requests":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }, "limits":{"memory": "{{inputs.parameters.mem}}", "cpu": "{{inputs.parameters.cpu}}" }}}]}'
+    volumes:
+      - name: '{{inputs.parameters.pvc-name}}'
+        persistentVolumeClaim:
+          claimName: '{{inputs.parameters.pvc-name}}'
+    container:
+      image: mgibio/rnaseq:1.0.0
+      command: ["/usr/bin/kallisto"]
+      args: ["quant", "-t", "{{inputs.parameters.threads}}", "-b", "100", "--fusion", "-o", "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/kallisto", "--rf-stranded", "-i", "{{inputs.parameters.kallisto_index}}", "{{inputs.parameters.trimmed_fastq1}}", "{{inputs.parameters.trimmed_fastq2}}"]
+      imagePullPolicy: Always
+      volumeMounts:
+      - name: '{{inputs.parameters.pvc-name}}'
+        mountPath: /data
+      - name: pvc-reference
+        mountPath: /ref-hg38
+    outputs:
+      parameters:
+      - name: expression_transcript_table
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/kallisto/abundance.tsv"
+      - name: expression_transcript_h5
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/kallisto/abundance.h5"
+      - name: fusion_evidence
+        value: "{{inputs.parameters.output-dir}}/{{inputs.parameters.data-type}}_final/kallisto/fusion.txt"

@@ -677,7 +677,6 @@ spec:
       - name: output-dir
       - name: "cpu"
       - name: "mem"
-      - name: threads
       - name: id
       - name: dir
       - name: bam1

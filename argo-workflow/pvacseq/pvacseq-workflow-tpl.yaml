@@ -95,15 +95,15 @@ spec:
       outputs:
         parameters:
           - name: all_epitopes
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.all_epitopes"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.sample-name}}.all_epitopes"
           - name: filtered_ranked_epitopes
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.filtered.condensed.ranked.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.sample-name}}.filtered.condensed.ranked.tsv"
           - name: filtered_epitopes
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.filtered.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.sample-name}}.filtered.tsv"
           - name: proximal_variants
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.proximal_variants.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.sample-name}}.proximal_variants.tsv"
           - name: tumor_exome
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.sample-name}}.tsv"
     - name: pvacseq-reporter
       inputs:
         parameters:
@@ -203,35 +203,35 @@ spec:
       outputs:
         parameters:
           - name: class_1_all_epitopes
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.all_epitopes.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.sample-name}}.all_epitopes.tsv"
           - name: class_1_filtered_ranked_epitopes
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.filtered.condensed.ranked.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.sample-name}}.filtered.condensed.ranked.tsv"
           - name: class_1_filtered_epitopes
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.filtered.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.sample-name}}.filtered.tsv"
           - name: class_1_proximal_variants
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.proximal_variants.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.sample-name}}.proximal_variants.tsv"
           - name: class_1_tumor_exome
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.id}}-tumor-exome.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_I/{{inputs.parameters.sample-name}}.tsv"
           - name: class_2_all_epitopes
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.id}}-tumor-exome.all_epitopes.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.sample-name}}.all_epitopes.tsv"
           - name: class_2_filtered_ranked_epitopes
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.id}}-tumor-exome.filtered.condensed.ranked.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.sample-name}}.filtered.condensed.ranked.tsv"
           - name: class_2_filtered_epitopes
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.id}}-tumor-exome.filtered.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.sample-name}}.filtered.tsv"
           - name: class_2_proximal_variants
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.id}}-tumor-exome.proximal_variants.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.sample-name}}.proximal_variants.tsv"
           - name: class_2_tumor_exome
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.id}}-tumor-exome.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/MHC_Class_II/{{inputs.parameters.sample-name}}.tsv"
           - name: combined_all_epitopes
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/combined/{{inputs.parameters.id}}-tumor-exome.all_epitopes.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/combined/{{inputs.parameters.sample-name}}.all_epitopes.tsv"
           - name: combined_filtered_ranked_epitopes
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/combined/{{inputs.parameters.id}}-tumor-exome.filtered.condensed.ranked.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/combined/{{inputs.parameters.sample-name}}.filtered.condensed.ranked.tsv"
           - name: combined_filtered_epitopes
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/combined/{{inputs.parameters.id}}-tumor-exome.filtered.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/combined/{{inputs.parameters.sample-name}}.filtered.tsv"
           - name: combined_proximal_variants
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/combined/{{inputs.parameters.id}}-tumor-exome.proximal_variants.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/combined/{{inputs.parameters.sample-name}}.proximal_variants.tsv"
           - name: combined_tumor_exome
-            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/combined/{{inputs.parameters.id}}-tumor-exome.tsv"
+            value: "{{inputs.parameters.output-dir}}/pvacseq/pvacseq_predictions/combined/{{inputs.parameters.sample-name}}.tsv"
 ##  pvac binding filter
     - name: pvac-binding-filter
       inputs:

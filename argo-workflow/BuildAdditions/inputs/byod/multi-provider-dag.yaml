@@ -857,7 +857,7 @@ spec:
             - name: bam-file
               value: "{{tasks.fastq-bam-cancer-2.outputs.parameters.fastq_bam}}"
             - name: readGroup
-              value: "{{workflow.parameters.cancer-readGroup}}"
+              value: "{{workflow.parameters.cancer-readGroup-2}}"
             - name: reference
               value: "{{workflow.parameters.genome-reference}}"
             - name: provider
@@ -884,7 +884,7 @@ spec:
             - name: bam-file
               value: "{{tasks.fastq-bam-cancer-3.outputs.parameters.fastq_bam}}"
             - name: readGroup
-              value: "{{workflow.parameters.cancer-readGroup}}"
+              value: "{{workflow.parameters.cancer-readGroup-3}}"
             - name: reference
               value: "{{workflow.parameters.genome-reference}}"
             - name: provider
